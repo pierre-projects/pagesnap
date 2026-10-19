@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pagesnap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='6' fill='%233b5bdb'/%3E%3Cpath d='M10 9h12M10 14h12M10 19h8' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+  <symbol id="i-desktop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-tablet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-custom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></symbol>
+</svg>
+
+<header class="topbar">
+  <a class="brand" id="home" href="/" title="Start a new capture">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="6" fill="var(--accent)"/><path d="M10 9h12M10 14h12M10 19h8" stroke="var(--on-accent)" stroke-width="2.5" stroke-linecap="round"/></svg>
+    pagesnap
+  </a>
+  <form class="urlform" id="urlform" autocomplete="off" novalidate>
+    <div class="urlwrap">
+      <svg aria-hidden="true"><use href="#i-globe"/></svg>
+      <input id="url" name="url" type="text" placeholder="Type a URL, for example example.com" aria-label="Page URL" spellcheck="false" inputmode="url">
+      <kbd title="Press / to go to the URL field">/</kbd>
+      <div class="urlerr" id="urlerr" role="alert" hidden></div>
+    </div>
+    <button class="btn primary" id="go" type="submit">Capture</button>
+  </form>
+  <div class="topactions">
+    <button class="btn ghost icon" id="reveal" type="button" title="Open the captures folder" aria-label="Open the captures folder"><svg><use href="#i-folder"/></svg></button>
+    <button class="btn ghost icon" id="theme" type="button" title="Change the theme" aria-label="Change the theme"><svg><use href="#i-theme"/></svg></button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="aside">
+    <button class="opttoggle" id="opttoggle" type="button" aria-expanded="false" aria-controls="opts">
+      <span>Options <span class="summary-note" id="optsummary"></span></span><svg aria-hidden="true"><use href="#i-chev"/></svg>
+    </button>
+    <form id="opts">
+      <div class="group">
+        <div class="label">Format</div>
+        <div class="seg" role="radiogroup" aria-label="Format">
+          <label><input type="radio" name="format" value="png" checked><span>PNG</span></label>
+          <label><input type="radio" name="format" value="jpeg"><span>JPEG</span></label>
+          <label><input type="radio" name="format" value="pdf"><span>PDF</span></label>
+        </div>
+        <div class="field" id="qualityField" hidden>
+          <div class="label"><span>Quality</span><span class="value" id="qout">85</span></div>
+          <div class="range"><input type="range" name="quality" min="10" max="100" step="5" value="85" aria-label="JPEG quality"></div>
+          <div class="hint">A lower value gives a smaller file.</div>
+        </div>
+        <label class="check" id="pagedField" hidden><input type="checkbox" name="pdfPaged"> Use A4 pages, not one long page</label>
+        <div class="hint" id="formatHint">PNG gives the sharpest image.</div>
+      </div>
+
+      <div class="group" id="splitGroup">
+        <div class="label"><span>Split into parts</span><span class="value" id="splitout"></span></div>
+        <div class="seg tight" role="radiogroup" aria-label="Split into parts">
+          <label><input type="radio" name="split" value="none" checked><span>Off</span></label>
+          <label><input type="radio" name="split" value="screen"><span>Screens</span></label>
+          <label><input type="radio" name="split" value="sections"><span>Sections</span></label>
+          <label><input type="radio" name="split" value="height"><span>Height</span></label>
+          <label><input type="radio" name="split" value="elements"><span>Elements</span></label>
+        </div>
+        <div class="field" id="sliceField" hidden>
+          <span id="sliceLabel">Slice height</span>
+          <div class="inline">
+            <input type="text" name="sliceHeight" value="1200" spellcheck="false" aria-labelledby="sliceLabel" aria-describedby="sliceHint">
+            <button class="chip" type="button" data-slice="a4">A4</button>
+            <button class="chip" type="button" data-slice="letter">Letter</button>
+          </div>
+          <div class="hint" id="sliceHint">Type a height in px, or use A4 or Letter. A4 and Letter use the page width.</div>
+        </div>
+        <div class="field" id="partsField" hidden>
+          <label><span>Elements to capture</span>
+          <textarea name="parts" placeholder=".card&#10;#pricing&#10;footer" spellcheck="false"></textarea></label>
+          <div class="hint">Type one CSS selector on each line.</div>
+        </div>
+        <div class="hint" id="splitHint"></div>
+      </div>
+
+      <div class="group">
+        <div class="label"><span>Viewport</span><span class="value" id="vpout">1440 × 900</span></div>
+        <div class="seg" role="radiogroup" aria-label="Viewport">
+          <label><input type="radio" name="vp" value="desktop" checked><span><svg aria-hidden="true"><use href="#i-desktop"/></svg>Desktop</span></label>
+          <label><input type="radio" name="vp" value="tablet"><span><svg aria-hidden="true"><use href="#i-tablet"/></svg>Tablet</span></label>
+          <label><input type="radio" name="vp" value="phone"><span><svg aria-hidden="true"><use href="#i-phone"/></svg>Phone</span></label>
+          <label><input type="radio" name="vp" value="custom"><span><svg aria-hidden="true"><use href="#i-custom"/></svg>Custom</span></label>
+        </div>
+        <div class="field" id="deviceField" hidden>
+          <label><span>Device</span>
+          <input type="text" name="device" list="devices" value="iPhone 15 Pro" spellcheck="false"></label>
+          <datalist id="devices"></datalist>
+          <div class="hint">The device sets the screen size, pixel density, and user agent.</div>
+        </div>
+        <div class="row field" id="customField" hidden>
+          <label><span>Width (px)</span><input type="number" name="width" min="100" value="1440"></label>
+          <label><span>Height (px)</span><input type="number" name="height" min="100" value="900"></label>
+        </div>
+        <div class="field" id="scaleField">
+          <div class="label">Pixel density</div>
+          <div class="seg" role="radiogroup" aria-label="Pixel density">
+            <label><input type="radio" name="scale" value="1" checked><span>1×</span></label>
+            <label><input type="radio" name="scale" value="2"><span>2× Retina</span></label>
+            <label><input type="radio" name="scale" value="3"><span>3×</span></label>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" name="dark"> Use the dark color scheme</label>
+      </div>
+
+      <div class="group" id="frameGroup">
+        <div class="label"><span>Device frame</span><span class="value" id="frameout"></span></div>
+        <div class="field">
+          <select name="frame" aria-label="Device frame">
+            <option value="none">Off</option>
+            <option value="auto">Auto (matches the viewport)</option>
+            <option value="phone">Phone</option>
+            <option value="tablet">Tablet</option>
+            <option value="laptop">Laptop</option>
+            <option value="browser">Browser window</option>
+          </select>
+        </div>
+        <div class="field" id="frameBgField" hidden>
+          <div class="label">Background</div>
+          <div class="seg" role="radiogroup" aria-label="Frame background">
+            <label><input type="radio" name="frameBg" value="transparent" checked><span>Clear</span></label>
+            <label><input type="radio" name="frameBg" value="light"><span>Light</span></label>
+            <label><input type="radio" name="frameBg" value="dark"><span>Dark</span></label>
+            <label><input type="radio" name="frameBg" value="gradient"><span>Gradient</span></label>
+          </div>
+        </div>
+        <div class="row field" id="clockField" hidden>
+          <label><span>Status bar time</span>
+            <span class="inline"><input type="text" name="frameTime" value="9:41" maxlength="12" spellcheck="false"><button class="chip" type="button" data-now="sidebar" title="Use the time now">Now</button></span>
+          </label>
+          <label id="dateField"><span>Date (tablet)</span><input type="text" name="frameDate" value="Tue Jan 9" maxlength="24" spellcheck="false"></label>
+        </div>
+        <div class="hint" id="frameHint">Saves the image without a frame.</div>
+      </div>
+
+      <details class="group" id="adv">
+        <summary><span>Page handling</span><span class="summary-note" id="advnote"></span><svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg></summary>
+        <div class="field">
+          <label><span>Cookie banners</span>
+          <select name="cookies">
+            <option value="reject">Click “Reject”, then hide</option>
+            <option value="accept">Click “Accept”, then hide</option>
+            <option value="hide">Hide only</option>
+            <option value="off">Do not change</option>
+          </select></label>
+        </div>
+        <div class="field">
+          <label><span>Sticky headers and chat buttons</span>
+          <select name="sticky">
+            <option value="once">Show the header one time, at the top</option>
+            <option value="hide">Hide all</option>
+            <option value="keep">Do not change</option>
+          </select></label>
+        </div>
+        <label class="check"><input type="checkbox" name="scroll" checked> Scroll the page to load all images</label>
+        <div class="row field">
+          <label><span>Maximum height (px)</span><input type="number" name="maxHeight" min="1000" step="1000" value="20000"></label>
+          <label><span>Extra wait (ms)</span><input type="number" name="wait" min="0" step="250" value="500"></label>
+        </div>
+        <div class="field">
+          <label><span>Wait for this element</span>
+          <input type="text" name="waitFor" placeholder="#main" spellcheck="false"></label>
+          <div class="hint">A CSS selector. The capture starts after this element appears.</div>
+        </div>
+        <div class="field">
+          <label><span>Hide these elements</span>
+          <textarea name="hide" placeholder=".promo-bar&#10;#newsletter-popup" spellcheck="false"></textarea></label>
+          <div class="hint">Type one CSS selector on each line.</div>
+        </div>
+        <div class="field">
+          <label><span>Timeout (s)</span>
+          <input type="number" name="timeoutS" min="5" value="45"></label>
+        </div>
+      </details>
+      <div class="resetrow"><button class="btn ghost" type="button" id="reset"><svg><use href="#i-redo"/></svg>Reset all options</button></div>
+    </form>
+  </aside>
+
+  <main>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" aria-controls="result" id="tab-result" data-tab="result">Capture</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="history" id="tab-history" data-tab="history">History<span class="badge" id="hcount">0</span></button>
+    </div>
+
+    <section class="view" id="result" role="tabpanel" aria-labelledby="tab-result">
+      <div class="empty" id="empty">
+        <div class="art"><svg aria-hidden="true"><use href="#i-image"/></svg></div>
+        <h2>Capture a full web page</h2>
+        <p>Type a URL above and press <kbd>Enter</kbd>. pagesnap scrolls the page, removes cookie banners, and saves the full height.</p>
+        <div class="chips" id="examples">
+          <button class="chip" type="button" data-url="https://example.com">example.com</button>
+          <button class="chip" type="button" data-url="https://news.ycombinator.com">news.ycombinator.com</button>
+          <button class="chip" type="button" data-url="https://en.wikipedia.org/wiki/Screenshot">Wikipedia article</button>
+        </div>
+        <div class="recent" id="recent" hidden>
+          <h3><span>Recent captures</span><button type="button" id="seeall">Show all</button></h3>
+          <div class="recentlist" id="recentlist"></div>
+        </div>
+      </div>
+
+      <div id="job" hidden>
+        <button class="backlink" id="jback" type="button" title="Go back to the start screen">
+          <svg aria-hidden="true"><use href="#i-left"/></svg>New capture<kbd>Esc</kbd>
+        </button>
+        <div class="jobhead">
+          <div class="jobtitle">
+            <h2 id="jtitle"></h2>
+            <div class="jobmeta" id="jmeta"></div>
+          </div>
+          <div class="toolbar" id="jactions"></div>
+        </div>
+        <div class="framepanel" id="framepanel" hidden>
+          <div class="fp-row">
+            <label class="fp-field"><span>Frame</span>
+              <select id="fpFrame">
+                <option value="auto">Auto (matches the capture)</option>
+                <option value="phone">Phone</option>
+                <option value="tablet">Tablet</option>
+                <option value="laptop">Laptop</option>
+                <option value="browser">Browser window</option>
+              </select>
+            </label>
+            <div class="fp-field"><span>Background</span>
+              <div class="seg" role="radiogroup" aria-label="Frame background">
+                <label><input type="radio" name="fpBg" value="transparent" checked><span>Clear</span></label>
+                <label><input type="radio" name="fpBg" value="light"><span>Light</span></label>
+                <label><input type="radio" name="fpBg" value="dark"><span>Dark</span></label>
+                <label><input type="radio" name="fpBg" value="gradient"><span>Gradient</span></label>
+              </div>
+            </div>
+            <label class="check fp-every"><input type="checkbox" id="fpEvery"> Every screen</label>
+          </div>
+          <div class="fp-actions">
+            <button class="btn primary" id="fpGo" type="button"><svg aria-hidden="true"><use href="#i-phone"/></svg>Frame it</button>
+            <button class="btn ghost" id="fpClose" type="button">Close</button>
+            <span class="hint" id="fpHint"></span>
+          </div>
+        </div>
+        <div class="steps" id="steps" hidden></div>
+        <div id="notices"></div>
+        <details class="log" id="logwrap">
+          <summary><svg aria-hidden="true"><use href="#i-right"/></svg><span id="logsum">Details</span></summary>
+          <div class="logbody" id="log" aria-live="polite"></div>
+        </details>
+        <div id="previewwrap" hidden>
+          <div class="framestrip" id="framestrip" hidden>
+            <label class="fs-field"><span>Frame</span>
+              <select id="fsFrame" aria-label="Device frame of this capture">
+                <option value="phone">Phone</option>
+                <option value="tablet">Tablet</option>
+                <option value="laptop">Laptop</option>
+                <option value="browser">Browser window</option>
+              </select>
+            </label>
+            <div class="seg" id="fsBgSeg" role="radiogroup" aria-label="Background of this capture">
+              <label><input type="radio" name="fsBg" value="transparent"><span>Clear</span></label>
+              <label><input type="radio" name="fsBg" value="light"><span>Light</span></label>
+              <label><input type="radio" name="fsBg" value="dark"><span>Dark</span></label>
+              <label><input type="radio" name="fsBg" value="gradient"><span>Gradient</span></label>
+            </div>
+            <label class="fs-field" id="fsTimeField"><span>Time</span>
+              <input type="text" id="fsTime" maxlength="12" spellcheck="false" aria-label="Status bar time of this capture">
+              <button class="chip" type="button" data-now="strip" title="Use the time now">Now</button>
+            </label>
+            <label class="fs-field" id="fsDateField"><span>Date</span>
+              <input type="text" id="fsDate" maxlength="24" spellcheck="false" aria-label="Status bar date of this capture">
+            </label>
+            <span class="fs-status" id="fsStatus" aria-live="polite"></span>
+          </div>
+          <div class="previewbar">
+            <span id="pvinfo"></span><span class="grow"></span>
+            <div class="zoom" id="zoom" role="group" aria-label="Zoom">
+              <button type="button" data-z="fit" aria-pressed="true">Fit</button>
+              <button type="button" data-z="actual" aria-pressed="false">Actual size</button>
+            </div>
+          </div>
+          <div class="preview" id="preview"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="history" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="histbar">
+        <div class="search"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="hsearch" type="search" placeholder="Search captures" aria-label="Search captures"></div>
+        <span class="histcount" id="hinfo"></span>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="hempty" hidden>
+        <div class="art"><svg aria-hidden="true"><use href="#i-image"/></svg></div>
+        <h2 id="hemptytitle">No captures yet</h2>
+        <p id="hemptytext">Your captures show here.</p>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
