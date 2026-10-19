@@ -1,0 +1,25 @@
+{
+  "name": "pagesnap",
+  "version": "1.0.0",
+  "description": "Full-page web screenshots (PNG/JPEG/PDF) that handle lazy loading, infinite scroll, cookie banners and sticky headers.",
+  "type": "module",
+  "bin": {
+    "pagesnap": "bin/pagesnap.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "ui/"
+  ],
+  "scripts": {
+    "snap": "node bin/pagesnap.js",
+    "ui": "node bin/pagesnap.js --ui"
+  },
+  "engines": {
+    "node": ">=18.3"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  },
+  "license": "MIT"
+}
