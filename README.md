@@ -1,6 +1,6 @@
 # pagesnap
 
-Full-page screenshots from the command line or an optional local web UI: PNG, JPEG or PDF, split into parts or shown inside a phone, tablet, laptop or browser frame. Works on Windows, macOS and Linux (needs Node 18.3+).
+Full-page screenshots from the command line or an optional local web UI: PNG, JPEG or PDF, split into parts or shown inside a phone, tablet, laptop or browser frame. Capture one page, or a whole list of pages at once. Works on Windows, macOS and Linux (needs Node 18.3+).
 
 ![A phone and a laptop frame made with pagesnap](docs/frames.png)
 
@@ -86,6 +86,9 @@ The saved file paths are printed to stdout (progress goes to stderr), so it scri
 | Option | Default | |
 |---|---|---|
 | `-o, --out <file>` | `<host>.<fmt>` | Output path; extension picks the format |
+| `--list <file>` | | Capture every URL in this file, one on each line (`-` reads stdin); repeatable |
+| `--out-dir <dir>` | current folder | Where a list's files go (with `--ui`: where the UI saves captures) |
+| `-j, --parallel <n>` | 3 | Pages of a list that load at the same time (1 to 16) |
 | `-f, --format` | png | `png`, `jpeg`, `pdf` |
 | `-q, --quality` | 85 | JPEG quality |
 | `--pdf-paged` | off | A4 pages instead of one long PDF page |
