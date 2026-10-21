@@ -29,6 +29,7 @@
   <symbol id="i-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8" fill="currentColor"/><circle cx="4.5" cy="12" r=".8" fill="currentColor"/><circle cx="4.5" cy="18" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l3 3 5-6"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
 </svg>
 
@@ -370,6 +371,16 @@
       <div class="histbar">
         <div class="search"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="hsearch" type="search" placeholder="Search captures" aria-label="Search captures"></div>
         <span class="histcount" id="hinfo"></span>
+        <span class="grow"></span>
+        <button class="btn ghost" id="selstart" type="button" title="Select captures to delete several at once"><svg aria-hidden="true"><use href="#i-check"/></svg>Select</button>
+      </div>
+      <div class="selbar" id="selbar" role="toolbar" aria-label="Selected captures" hidden>
+        <button class="btn ghost icon" id="selclose" type="button" title="Stop selecting (Esc)" aria-label="Stop selecting"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+        <span class="selcount" id="selcount" aria-live="polite"></span>
+        <button class="btn ghost" id="selall" type="button"></button>
+        <span class="grow"></span>
+        <span class="hint selhint">Shift+click selects a range</span>
+        <button class="btn danger" id="seldelete" type="button" disabled><svg aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
       </div>
       <div class="grid" id="grid"></div>
       <div class="empty" id="hempty" hidden>
