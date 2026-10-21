@@ -11,6 +11,7 @@ import { writeForm, formFromOptions, buildRequest, saveForm, closeOptions } from
 import { urlInput, withScheme, checkUrl, urlError } from './url.js';
 import { showJobView, showEmpty, resetJobView, setHeader, setMeta, setPill, pill, notice } from './view.js';
 import { showCapture } from './result.js';
+import { batchRunning, showBatch, backToList, setBack } from './batch.js';
 
 const STEP_INFO = {
   load: ['Load', 'Open the page'],
@@ -39,6 +40,8 @@ function setBusy(busy) {
 export function goHome() {
   showTab('result');
   if (current?.running) return;
+  if (batchRunning()) { showBatch(); return; }
+  setBack(false);
   current = null;
   resetJobView();
   showEmpty();
@@ -78,10 +81,21 @@ function logLine(text, cls) {
   $('#logsum').textContent = `Details (${log.children.length} ${log.children.length === 1 ? 'line' : 'lines'})`;
 }
 
+// While a list runs, the Capture tab shows it: single captures wait until it ends.
+function listBusy() {
+  if (!batchRunning()) return false;
+  toast('A list is being captured. Wait for it to finish, or cancel it.');
+  showBatch();
+  return true;
+}
+
+// The back link and Esc over a capture: back to the list it was opened from, else the start screen.
+const back = () => { if (!backToList()) goHome(); };
+
 // Start a capture of the URL field. `override` is a saved request to repeat ("Try again").
 export async function capture(e, override) {
   e?.preventDefault();
-  if (current?.running) return;
+  if (current?.running || listBusy()) return;
   const problem = checkUrl(urlInput.value);
   if (problem) {
     urlError(problem);
@@ -93,6 +107,7 @@ export async function capture(e, override) {
   catch (err) { toast(err.message); return; }
   saveForm();
   showTab('result');
+  setBack(false);
   showJobView();
   resetJobView();
   closeOptions();
@@ -120,7 +135,9 @@ export async function capture(e, override) {
 // again, so there are no load/scroll steps and nothing to cancel: it takes a second or two.
 async function runFrame(c, { frame, frameBg, every, frameTime, frameDate }) {
   if (current?.running) { toast('Wait for the current capture to finish.'); return; }
+  if (listBusy()) return;
   showTab('result');
+  setBack(false);
   showJobView();
   resetJobView();
   const job = current = { started: Date.now(), running: true, steps: {}, retry: () => runFrame(c, { frame, frameBg, every, frameTime, frameDate }) };
@@ -250,7 +267,8 @@ export function initCapture() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !current?.running) setTitle(); });
 
   // Ways back to the start screen without reloading: "← New capture", Esc, and the logo.
-  $('#jback').addEventListener('click', goHome);
+  $('#jback').addEventListener('click', back);
+  $('#bback').addEventListener('click', goHome);
   $('#home').addEventListener('click', (e) => { e.preventDefault(); goHome(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
@@ -258,7 +276,9 @@ export function initCapture() {
     // sidebar's fields, where Esc may close a device list.
     const a = document.activeElement;
     const typing = a !== urlInput && /^(INPUT|TEXTAREA|SELECT)$/.test(a?.tagName);
-    const onJob = !$('#job').hidden && !$('#result').hidden;
-    if (!typing && onJob) goHome();
+    const onResult = !$('#result').hidden;
+    if (typing || !onResult) return;
+    if (!$('#job').hidden) back();
+    else if (!$('#batch').hidden) goHome();
   });
 }

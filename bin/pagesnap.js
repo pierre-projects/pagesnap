@@ -5,10 +5,13 @@
 
 import { parseArgs } from 'node:util';
 import path from 'node:path';
-import { snap, reframe, listDevices } from '../lib/snap/index.js';
+import fs from 'node:fs/promises';
+import { snap, snapMany, reframe, listDevices, normalize, parseUrlList, pageSlug, MAX_LIST } from '../lib/snap/index.js';
 
 const HELP = `
 Usage: pagesnap <url> [options]
+       pagesnap <url> <url...> [--out-dir dir] [-j 3] [options]
+       pagesnap --list urls.txt [--out-dir dir] [-j 3] [options]
        pagesnap frame <image...> [--frame kind] [--frame-bg bg] [-d device | -w px -H px] [--url url] [--split screen] [-o file]
        pagesnap --ui [--port 4777] [--out-dir ./captures] [--no-open]
 
@@ -18,6 +21,14 @@ Frame an existing capture
   if not given); the pixel density from -s, else image width ÷ viewport width. --url sets the
   address bar text. --split screen frames every screen instead of only the first.
   Output: <image>-framed.png unless -o is given.
+
+Capture a list of pages
+  Give several URLs, or a file with one URL on each line (--list; "-" reads standard input;
+  blank lines and lines that start with # are skipped). Every page gets the same options.
+  Files are named after each page, for example example.com_docs_intro.png.
+      --list <file>         Read the URLs from this file (repeatable)
+      --out-dir <dir>       Where the list's files go (default: the current folder)
+  -j, --parallel <n>        Pages to capture at the same time (default 3)
 
 Output
   -o, --out <file>          Output file (default: <host>.<format>)
@@ -82,6 +93,8 @@ Examples
   pagesnap https://example.com --parts ".card" --parts "footer"
   pagesnap https://example.com -d "iPhone 15 Pro" --frame auto -o phone.png
   pagesnap https://example.com --frame laptop --frame-bg gradient
+  pagesnap example.com example.org/about --out-dir shots
+  pagesnap --list urls.txt -d "iPhone 15 Pro" -j 4 --out-dir shots/mobile
   pagesnap --ui
 `;
 
@@ -122,6 +135,8 @@ const { values: opt, positionals } = parseArgs({
     port: { type: 'string' },
     'out-dir': { type: 'string' },
     'no-open': { type: 'boolean' },
+    list: { type: 'string', multiple: true },
+    parallel: { type: 'string', short: 'j' },
     help: { type: 'boolean', short: 'h' },
     url: { type: 'string' },
   },
@@ -163,45 +178,124 @@ if (opt.ui) {
     die(e.message.split('\n')[0]);
   }
 } else {
-  if (opt.help || positionals.length === 0) {
+  const urls = positionals.slice();
+  for (const file of opt.list ?? []) {
+    let text;
+    try { text = file === '-' ? await readStdin() : await fs.readFile(file, 'utf8'); }
+    catch (e) { die(`The list "${file}" could not be read. ${e.code === 'ENOENT' ? 'The file does not exist.' : e.message}`); }
+    urls.push(...parseUrlList(text));
+  }
+  if (opt.help || urls.length === 0) {
+    if (opt.list && !opt.help) die('The list has no URLs. Put one URL on each line.');
     console.log(HELP.trim());
     process.exit(opt.help ? 0 : 1);
   }
+  if (urls.length > 1 || opt.list) await captureList([...new Set(urls)]);
+  else await captureOne(urls[0]);
+}
+
+// The capture options from the command line, for any URL.
+function captureOptions() {
+  return {
+    format: opt.format,
+    quality: opt.quality,
+    pdfPaged: opt['pdf-paged'],
+    width: opt.width,
+    height: opt.height,
+    scale: opt.scale,
+    device: opt.device,
+    dark: opt.dark,
+    userAgent: opt['user-agent'],
+    browser: opt.browser,
+    cookies: opt.cookies,
+    sticky: opt.sticky,
+    scroll: opt['no-scroll'] ? false : undefined,
+    maxHeight: opt['max-height'],
+    maxScrolls: opt['max-scrolls'],
+    hide: opt.hide,
+    wait: opt.wait,
+    waitFor: opt['wait-for'],
+    split: opt.split,
+    sliceHeight: opt['slice-height'],
+    parts: opt.parts,
+    exactCuts: opt['exact-cuts'],
+    frame: opt.frame,
+    frameBg: opt['frame-bg'],
+    frameTime: opt['frame-time'],
+    frameDate: opt['frame-date'],
+    timeout: opt.timeout,
+    headed: opt.headed,
+  };
+}
+
+async function captureOne(url) {
   try {
-    const { files } = await snap({
-      url: positionals[0],
-      out: opt.out,
-      format: opt.format,
-      quality: opt.quality,
-      pdfPaged: opt['pdf-paged'],
-      width: opt.width,
-      height: opt.height,
-      scale: opt.scale,
-      device: opt.device,
-      dark: opt.dark,
-      userAgent: opt['user-agent'],
-      browser: opt.browser,
-      cookies: opt.cookies,
-      sticky: opt.sticky,
-      scroll: opt['no-scroll'] ? false : undefined,
-      maxHeight: opt['max-height'],
-      maxScrolls: opt['max-scrolls'],
-      hide: opt.hide,
-      wait: opt.wait,
-      waitFor: opt['wait-for'],
-      split: opt.split,
-      sliceHeight: opt['slice-height'],
-      parts: opt.parts,
-      exactCuts: opt['exact-cuts'],
-      frame: opt.frame,
-      frameBg: opt['frame-bg'],
-      frameTime: opt['frame-time'],
-      frameDate: opt['frame-date'],
-      timeout: opt.timeout,
-      headed: opt.headed,
-    }, { onLog: (msg) => console.error('[pagesnap]', msg) });
+    const { files } = await snap({ ...captureOptions(), url, out: opt.out }, { onLog: (msg) => console.error('[pagesnap]', msg) });
     for (const f of files) console.log(f);
   } catch (e) {
     die(e.message.split('\n')[0]);
   }
+}
+
+// Several pages: each gets its own file in --out-dir. One page failing does not stop the others;
+// the exit code is 1 when any page failed.
+async function captureList(urls) {
+  if (opt.out) die('With several URLs, use --out-dir for the folder. -o names a single file.');
+  if (urls.length > MAX_LIST) die(`The list has ${urls.length} URLs. The most is ${MAX_LIST}. Split the list into smaller files.`);
+  const parallel = opt.parallel === undefined ? 3 : Number(opt.parallel);
+  if (!Number.isInteger(parallel) || parallel < 1 || parallel > 16) die('The --parallel value must be a whole number from 1 to 16.');
+  const dir = path.resolve(opt['out-dir'] || '.');
+
+  // Check every URL and the options before starting, so a typo on line 40 does not waste a run.
+  const base = captureOptions();
+  const items = [];
+  const bad = [];
+  const taken = new Set();
+  for (const url of urls) {
+    let o;
+    try { o = normalize({ ...base, url }); } catch (e) { bad.push(`  ${url}: ${e.message}`); continue; }
+    const ext = o.format === 'jpeg' ? 'jpg' : o.format;
+    const slug = pageSlug(o.url);
+    let name = `${slug}.${ext}`;
+    for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${slug}_${i}.${ext}`;
+    taken.add(name.toLowerCase());
+    items.push({ ...base, url: o.url, out: path.join(dir, name) });
+  }
+  if (bad.length) die(`${bad.length === 1 ? 'One URL is' : `${bad.length} URLs are`} not valid. Nothing was captured.\n${bad.join('\n')}`);
+
+  const n = items.length;
+  const width = String(n).length;
+  let ended = 0;
+  console.error(`[pagesnap] Capturing ${n} pages, ${Math.min(parallel, n)} at a time, to ${dir}`);
+  const controller = new AbortController();
+  process.once('SIGINT', () => { console.error('[pagesnap] Cancelling.'); controller.abort(); });
+  const results = await snapMany(items, {
+    parallel,
+    signal: controller.signal,
+    // Logs of pages loading at the same time would mix, so only warnings and downloads show.
+    onLog: (msg, i) => { if (/^(Warning|Downloading)/.test(msg)) console.error('[pagesnap]', i === undefined ? msg : `${items[i].url}: ${msg}`); },
+    onEnd: (i, r) => {
+      ended++;
+      const tag = `[${String(ended).padStart(width)}/${n}]`;
+      if (r.error) console.error(`${tag} failed  ${r.url}\n${' '.repeat(tag.length)}         ${r.error}`);
+      else {
+        console.error(`${tag} saved   ${r.url}`);
+        for (const f of r.files) console.log(f);
+      }
+    },
+  }).catch((e) => die(e.message.split('\n')[0]));
+  const failed = results.filter((r) => r.error);
+  if (!failed.length) {
+    console.error(`[pagesnap] All ${n} pages were captured.`);
+    return;
+  }
+  console.error(`[pagesnap] ${n - failed.length} of ${n} pages were captured. ${failed.length} failed:`);
+  for (const r of failed) console.error(`  ${r.url}: ${r.error}`);
+  process.exit(1);
+}
+
+async function readStdin() {
+  const chunks = [];
+  for await (const c of process.stdin) chunks.push(c);
+  return Buffer.concat(chunks).toString('utf8');
 }

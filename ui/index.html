@@ -28,6 +28,8 @@
   <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
   <symbol id="i-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8" fill="currentColor"/><circle cx="4.5" cy="12" r=".8" fill="currentColor"/><circle cx="4.5" cy="18" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
 </svg>
 
 <header class="topbar">
@@ -43,6 +45,7 @@
       <div class="urlerr" id="urlerr" role="alert" hidden></div>
     </div>
     <button class="btn primary" id="go" type="submit">Capture</button>
+    <button class="btn" id="listbtn" type="button" title="Capture a list of pages"><svg aria-hidden="true"><use href="#i-list"/></svg><span>List</span></button>
   </form>
   <div class="topactions">
     <button class="btn ghost icon" id="reveal" type="button" title="Open the captures folder" aria-label="Open the captures folder"><svg><use href="#i-folder"/></svg></button>
@@ -216,6 +219,7 @@
           <button class="chip" type="button" data-url="https://news.ycombinator.com">news.ycombinator.com</button>
           <button class="chip" type="button" data-url="https://en.wikipedia.org/wiki/Screenshot">Wikipedia article</button>
         </div>
+        <p class="listlink">Many pages? <button type="button" id="listlink">Capture a list of URLs</button> or paste several URLs in the field.</p>
         <div class="recent" id="recent" hidden>
           <h3><span>Recent captures</span><button type="button" id="seeall">Show all</button></h3>
           <div class="recentlist" id="recentlist"></div>
@@ -299,6 +303,41 @@
             </div>
           </div>
           <div class="preview" id="preview"></div>
+        </div>
+      </div>
+
+      <div id="batch" hidden>
+        <button class="backlink" id="bback" type="button" title="Go back to the start screen">
+          <svg aria-hidden="true"><use href="#i-left"/></svg>New capture<kbd>Esc</kbd>
+        </button>
+        <div id="bcompose">
+          <div class="jobhead">
+            <div class="jobtitle">
+              <h2>Capture a list of pages</h2>
+              <div class="jobmeta"><span>Every page gets the same capture options. Three pages load at the same time.</span></div>
+            </div>
+          </div>
+          <textarea id="blist" class="listarea" spellcheck="false" autocomplete="off" aria-label="URLs to capture, one on each line" aria-describedby="bcount"
+            placeholder="https://example.com&#10;https://example.com/pricing&#10;news.ycombinator.com&#10;# Lines that start with # are skipped"></textarea>
+          <div class="listbar">
+            <span class="hint" id="bcount" aria-live="polite"></span>
+            <span class="grow"></span>
+            <label class="btn ghost" title="Load URLs from a .txt or .csv file"><svg aria-hidden="true"><use href="#i-file"/></svg>Load a file<input type="file" id="bfile" accept=".txt,.csv,.tsv,text/plain,text/csv" class="sr"></label>
+            <button class="btn primary" id="bgo" type="button" disabled>Capture pages</button>
+          </div>
+          <div id="bproblems"></div>
+        </div>
+        <div id="brun" hidden>
+          <div class="jobhead">
+            <div class="jobtitle">
+              <h2 id="btitle"></h2>
+              <div class="jobmeta" id="bmeta"></div>
+            </div>
+            <div class="toolbar" id="bactions"></div>
+          </div>
+          <div class="overall" role="progressbar" aria-label="Pages finished" id="boverall"><div class="fill" id="bbar"></div></div>
+          <div id="bnotices"></div>
+          <div class="grid batchgrid" id="bgrid"></div>
         </div>
       </div>
     </section>

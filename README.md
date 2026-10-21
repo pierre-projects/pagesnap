@@ -42,6 +42,21 @@ pagesnap https://example.com --slice-height a4
 pagesnap https://example.com --parts ".card" --parts "footer"
 ```
 
+### Capture a list of pages
+
+Give several URLs, or a text file with one URL on each line. Every page gets the same options. Blank lines and lines that start with `#` are skipped, and `--list -` reads the list from standard input.
+
+```bash
+pagesnap example.com example.com/pricing example.org --out-dir shots
+pagesnap --list urls.txt -d "iPhone 15 Pro" --out-dir shots/mobile
+pagesnap --list urls.txt -j 6 --format jpeg
+```
+
+- The pages share one browser, and `-j, --parallel <n>` of them load at the same time (default 3, at most 16).
+- Each file is named after its page, for example `example.com_docs_intro.png`, in `--out-dir` (default: the current folder). `-o` is for a single URL only.
+- Every URL is checked first. If one is not valid, nothing is captured and the bad ones are listed.
+- One page failing does not stop the others. At the end, the failed pages are listed with their errors and the exit code is 1. Ctrl+C cancels the pages that are left.
+
 ### Split into parts
 
 The `--split` option saves one capture as several images, like A4 pages in a PDF. It works with PNG and JPEG.
@@ -178,10 +193,14 @@ Or `pagesnap --ui` after `npm link`. This starts a small server on `http://local
   - A capture that was framed before this feature has no saved screens, so its strip is off. Use **Capture again** to make a new one.
   - To change the phone model or the viewport, use **Capture again**. Those change how the page itself is laid out.
 - **Split into parts** in the sidebar has the same modes as `--split`. The preview shows each part with its name and its own download button. **Download all** gets every part in one ZIP file.
+- **List** (next to **Capture**) captures many pages at once. Paste or type one URL on each line, or load a `.txt` or `.csv` file. Pasting several URLs into the URL field opens the list too. Lines that are not URLs are shown with their line numbers before anything starts.
+  - Every page gets the sidebar's options. Three pages load at the same time; the others wait.
+  - Each page has a card that shows its progress, then its thumbnail or its error. **Open** shows the capture, and **Back to the list** (or Esc) returns.
+  - When the list ends, **Download all** gets every saved page in one ZIP file, **Try again** captures the pages that were not saved, and **Edit list** changes the list. **Cancel** stops the whole list.
 - If a capture fails, the error says what went wrong and what to do. **Try again** repeats it with the same options.
 - **History** shows each capture with its URL, viewport, size, and age. Type in the search field to filter the list. **Again** repeats a capture with its original options. To delete a capture, click the trash button two times.
 - The sidebar has every CLI option. The UI keeps your options and theme between visits. On a phone, the options fold into one line.
-- Captures go to `./captures` as `<host>-<timestamp>.<ext>`. The URL and options of each capture go to `captures/.pagesnap-history.json`. Framed captures also keep their unframed screens in `captures/.frames/`. Two UI servers can share one folder safely.
+- Captures go to `./captures` as `<host>-<timestamp>.<ext>` (pages of a list as `<host>_<path>-<timestamp>.<ext>`). The URL and options of each capture go to `captures/.pagesnap-history.json`. Framed captures also keep their unframed screens in `captures/.frames/`. Two UI servers can share one folder safely.
 - Captures run one at a time. Extra requests wait in a queue.
 
 | UI option | Default | |

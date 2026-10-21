@@ -1,17 +1,27 @@
 // The job panel on the Capture tab: header, meta line, notices. Shared by a running capture
-// (capture.js) and a finished one (result.js).
+// (capture.js) and a finished one (result.js). The Capture tab shows one of three panels:
+// the start screen (#empty), one capture (#job), or a list capture (#batch).
 
 import { $, el, icon } from './dom.js';
 import { prettyUrl } from './format.js';
 
 export function showJobView() {
   $('#empty').hidden = true;
+  $('#batch').hidden = true;
   $('#job').hidden = false;
 }
 
 export function showEmpty() {
   $('#empty').hidden = false;
+  $('#batch').hidden = true;
   $('#job').hidden = true;
+}
+
+// The list capture panel (batch.js) in place of the job panel.
+export function showBatchView() {
+  $('#empty').hidden = true;
+  $('#job').hidden = true;
+  $('#batch').hidden = false;
 }
 
 // Clear everything a previous capture left in the panel.

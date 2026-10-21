@@ -7,6 +7,7 @@
 //   options.js  the sidebar form → request       url.js      the URL field and its checks
 //   view.js     job panel header and notices     capture.js  a running capture (SSE progress)
 //   result.js   a finished capture and preview   history.js  History tab and recent list
+//   batch.js    a list of pages: editor and grid
 
 import { showEmpty } from './view.js';
 import { api } from './api.js';
@@ -17,6 +18,7 @@ import { initUrl } from './url.js';
 import { initResult } from './result.js';
 import { initCapture, setSteps } from './capture.js';
 import { initHistory } from './history.js';
+import { initBatch } from './batch.js';
 
 initTheme();
 initTabs();
@@ -25,6 +27,7 @@ initUrl();
 initResult();
 initCapture();
 initHistory();
+initBatch();
 showEmpty();
 
 api('/api/config').then(({ devices, steps }) => {
