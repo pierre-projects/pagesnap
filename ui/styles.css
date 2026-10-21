@@ -376,12 +376,34 @@ details.log[open] summary svg { transform: rotate(90deg); }
 .findbox .hint.ok { color: var(--ok); }
 .findbox .hint.warn { color: var(--warn); }
 .findbox .hint.error { color: var(--err); }
-.listarea {
-  display: block; width: 100%; min-height: 240px; height: 40vh; padding: 10px 12px; resize: vertical;
+/* The editor: a column of marks (✓ ✕ –) for the pages of the last list, then the text. Both use
+   the same font and line height, and the text does not wrap, so each mark stays on its line. */
+.listedit {
+  display: flex; min-height: 240px; height: 40vh; resize: vertical; overflow: hidden;
   border: 1px solid var(--border); border-radius: 9px; background: var(--panel);
-  font: 13px/1.6 var(--mono);
 }
-.listarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.listedit:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.listarea {
+  display: block; flex: 1; min-width: 0; height: 100%; padding: 10px 12px; resize: none; border: 0; background: none;
+  font: 13px/1.6 var(--mono); white-space: pre; overflow: auto;
+}
+.listarea:focus { outline: none; }
+.gutter {
+  flex: none; width: 30px; padding: 10px 0; overflow: hidden; border-right: 1px solid var(--border);
+  background: var(--panel-2); font: 13px/1.6 var(--mono); text-align: center; user-select: none;
+}
+.gutter .mk { height: 1.6em; font-weight: 700; }
+.gutter .mk.done { color: var(--ok); }
+.gutter .mk.error { color: var(--err); }
+.gutter .mk.cancelled { color: var(--faint); }
+/* Over the editor while a list exists: how it went, and the way back to its results. */
+.lastlist {
+  display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 12px;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 9px; background: var(--panel);
+}
+.lastlist .body { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.lastlist .body span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.lastlist .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .listbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
 .listbar .grow { flex: 1; }
 .listbar .hint { margin: 0; font-variant-numeric: tabular-nums; }

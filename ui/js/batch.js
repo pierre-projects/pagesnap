@@ -68,8 +68,14 @@ const shows = (it) => filter === 'all' || groupOf(it) === filter;
 const area = $('#blist');
 const goBtn = $('#bgo');
 
-let batch = null; // the list on screen: { id, req, started, items, ended, es, timer }
+// The last list, running or ended: { id, req, started, items, ended, es, timer }. It stays until a
+// new list starts or "New list" is clicked, so its results can always be shown again.
+let batch = null;
 let fromList = false; // the capture on screen was opened from the list's grid
+// The pages of the list that "Edit list" came from, by URL: the editor marks each line with how
+// that page went. Null when the editor is not editing a list that ran.
+let marks = null;
+const markKey = (u) => withScheme(u.trim());
 const cards = new Map(); // job id -> card element
 
 export const batchRunning = () => !!batch && !batch.ended;
@@ -91,15 +97,18 @@ export function parseList(text) {
 // ---------- the list editor ----------
 
 // Show the list editor, with `text` in it if given. A list that is still running is shown instead.
-export function openList(text) {
+// `from` is the list that "Edit list" came from: its pages are marked in the editor.
+export function openList(text, { from } = {}) {
   showTab('result');
   if (batchRunning()) { showBatch(); return; }
   setBack(false);
   showBatchView();
   $('#bcompose').hidden = false;
   $('#brun').hidden = true;
+  if (from) marks = new Map(from.items.map((it) => [markKey(it.url), it]));
   if (text !== undefined) area.value = text;
   else if (!area.value) area.value = store.load().list ?? '';
+  area.scrollTop = 0;
   // The site to search: the last one searched, else the URL field.
   const site = $('#fsite');
   if (!site.value) site.value = store.load().findSite ?? urlInput.value.trim();
@@ -126,6 +135,9 @@ function checkList() {
     : `${n} ${n === 1 ? 'URL' : 'URLs'}${bad.length ? `, ${bad.length} not valid` : ''}${est}`;
   $('#bcount').title = ok ? `${PARALLEL} pages at a time, about ${fmtMs(Math.round(each / 100) * 100)} each${pastMs ? ': the usual time of your recent captures' : ''}. Big or slow pages take longer.` : '';
 
+  renderGutter();
+  renderLastList();
+
   const box = $('#bproblems');
   box.replaceChildren();
   if (bad.length) {
@@ -139,6 +151,60 @@ function checkList() {
           bad.length > shown.length ? el('li', {}, `and ${bad.length - shown.length} more`) : null))));
   }
   return ok ? entries.map((e) => e.url) : null;
+}
+
+const MARK = {
+  done: ['✓', 'Saved'], error: ['✕', 'Failed'], cancelled: ['–', 'Cancelled'],
+  queued: ['', ''], running: ['', ''],
+};
+
+// A mark next to each line of the editor that is a page of the last list: ✓ saved, ✕ failed,
+// – cancelled. The gutter scrolls with the text; the text does not wrap, so lines stay level.
+function renderGutter() {
+  const g = $('#bgutter');
+  g.hidden = !marks;
+  if (!marks) return;
+  g.replaceChildren(...area.value.split('\n').map((line) => {
+    const it = line.trim() && !line.trim().startsWith('#') ? marks.get(markKey(line)) : null;
+    const [mark, label] = MARK[it?.state] ?? ['', ''];
+    return el('div', { class: `mk ${it?.state ?? ''}`, title: label ? `${label}${it.state === 'error' && it.error ? `: ${it.error}` : ''}` : null }, mark || ' ');
+  }));
+  g.scrollTop = area.scrollTop;
+}
+
+// The banner over the editor while a list exists: how its pages went, the way back to its
+// results, and a quick way to keep only the pages that were not saved.
+function renderLastList() {
+  const box = $('#lastlist');
+  box.hidden = !batch;
+  if (!batch) return;
+  const lines = parseList(area.value).map((e) => marks?.get(markKey(e.url)));
+  const saved = lines.filter((it) => it?.state === 'done').length;
+  const failed = lines.filter((it) => it?.state === 'error').length;
+  const cancelled = lines.filter((it) => it?.state === 'cancelled').length;
+  const added = lines.filter((it) => !it).length;
+  const parts = [
+    saved ? `✓ ${saved} saved` : null,
+    failed ? `✕ ${failed} failed` : null,
+    cancelled ? `– ${cancelled} cancelled` : null,
+    marks && added ? `${added} new` : null,
+  ].filter(Boolean);
+  box.replaceChildren(
+    el('div', { class: 'body' },
+      el('b', {}, marks ? 'Editing your last list' : 'Your last list'),
+      el('span', {}, marks ? (parts.length ? parts.join(' · ') : 'None of these pages were in it.') : `${batch.items.length} pages. Its results are still here.`)),
+    el('div', { class: 'acts' },
+      marks && saved ? btn(`Remove the ${saved} saved`, 'x', { class: 'btn ghost', title: 'Take the pages that were saved out of the list, to capture only the rest', onclick: removeSaved }) : null,
+      btn('Back to the results', 'left', { class: 'btn', onclick: showBatch })));
+}
+
+function removeSaved() {
+  const before = parseList(area.value).length;
+  area.value = area.value.split('\n').filter((line) => marks.get(markKey(line))?.state !== 'done').join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  store.patch({ list: area.value });
+  checkList();
+  const n = before - parseList(area.value).length;
+  toast(`${n} saved ${n === 1 ? 'page was' : 'pages were'} taken out of the list.`);
 }
 
 // Select line `n` (1-based) of the list, so it can be fixed.
@@ -273,6 +339,9 @@ async function start(urls) {
     items: res.jobs.map((j, i) => ({ id: j.id, url: j.url, n: i + 1, state: 'queued' })),
   };
   filter = 'all';
+  marks = null;
+  // Kept so the list's results come back after a reload.
+  store.patch({ lastList: { id: b.id, req, started: b.started, items: b.items.map(({ id, url, n }) => ({ id, url, n })) } });
   showRun();
   b.timer = setInterval(() => renderHead(b), 1000);
   follow(b);
@@ -325,7 +394,9 @@ function update(b, it, type, data) {
 function finish(b) {
   if (b.ended) return;
   b.ended = true;
-  b.endedAt = Date.now();
+  b.endedAt ??= Date.now();
+  const saved = store.load().lastList;
+  if (saved?.id === b.id) store.patch({ lastList: { ...saved, endedAt: b.endedAt } });
   b.es?.close();
   clearInterval(b.timer);
   // A page whose end the stream missed is no longer running.
@@ -351,6 +422,46 @@ async function cancelOne(it) {
   catch (err) { toast(err.message); }
   // Not cancelled: the page ended meanwhile, and its own event redraws it.
   if (!ok && it.cancelling) { it.cancelling = false; renderCard(it); }
+}
+
+// Forget the last list and start an empty one. Its captures stay in History.
+function newList() {
+  batch = null;
+  marks = null;
+  area.value = '';
+  store.patch({ lastList: null, list: '' });
+  openList('');
+}
+
+// After a reload: bring back the last list. If the server still has it, its events replay and a
+// running list goes on showing; if not, what was saved comes from History.
+async function restoreList() {
+  const saved = store.load().lastList;
+  if (!saved?.id || !Array.isArray(saved.items)) return;
+  const b = {
+    id: saved.id, req: saved.req, started: saved.started, endedAt: saved.endedAt, ended: false,
+    items: saved.items.map((x) => ({ ...x, state: 'queued' })),
+  };
+  let status = null;
+  try { status = await api(`/api/batches/${b.id}`); } catch { /* not known any more */ }
+  if (batch) return; // a new list started meanwhile
+  batch = b;
+  if (status) {
+    b.timer = setInterval(() => renderHead(b), 1000);
+    follow(b);
+    // A list that still runs comes back on screen, unless the person is doing something else.
+    if (!status.ended && !$('#empty').hidden) showBatch();
+    return;
+  }
+  const caps = await api('/api/captures').catch(() => []);
+  const byUrl = new Map(caps.filter((c) => c.batch === b.id).map((c) => [c.url, c]));
+  for (const it of b.items) {
+    const c = byUrl.get(it.url);
+    if (c) Object.assign(it, { state: 'done', entry: c, ms: c.ms });
+    else Object.assign(it, { state: 'cancelled', error: 'Not saved' });
+  }
+  b.ended = true;
+  b.endedAt ??= Math.max(b.started, ...b.items.map((it) => it.entry?.createdAt ?? 0));
 }
 
 // ---------- the results ----------
@@ -457,7 +568,8 @@ function renderHead(b) {
   bar.replaceChildren(...[
     done ? btn(`Download all (${done})`, 'down', { href: `/api/batches/${b.id}/zip`, class: 'btn primary', title: 'Download every saved page as one ZIP file' }) : null,
     notSaved.length ? btn(`Try ${notSaved.length} again`, 'redo', { title: 'Capture the pages that were not saved again', onclick: () => start(notSaved) }) : null,
-    btn('Edit list', 'list', { onclick: () => openList(b.items.map((x) => x.url).join('\n')) }),
+    btn('Edit list', 'list', { title: 'Change the list and capture it again. Its pages are marked with how they went.', onclick: () => openList(b.items.map((x) => x.url).join('\n'), { from: b }) }),
+    btn('New list', null, { class: 'btn ghost', title: 'Start an empty list. These captures stay in History.', onclick: newList }),
   ].filter(Boolean));
 }
 
@@ -583,6 +695,7 @@ export function backToList() {
 
 export function initBatch() {
   area.addEventListener('input', () => { checkList(); store.patch({ list: area.value }); });
+  area.addEventListener('scroll', () => { $('#bgutter').scrollTop = area.scrollTop; });
   area.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); goBtn.click(); }
   });
@@ -591,8 +704,10 @@ export function initBatch() {
   $('#findform').addEventListener('submit', findSite);
   $('#bview').addEventListener('click', (e) => { const v = e.target.closest('[data-v]')?.dataset.v; if (v && v !== view) setView(v); });
   $('#fmode').value = store.load().findMode ?? 'auto';
-  $('#listbtn').addEventListener('click', () => (batch && !batch.ended ? showBatch() : openList()));
-  $('#listlink').addEventListener('click', () => openList());
+  // While there is a last list, List shows its results; "New list" or "Edit list" leads on from there.
+  $('#listbtn').addEventListener('click', () => (batch ? showBatch() : openList()));
+  $('#listlink').addEventListener('click', () => (batch ? showBatch() : openList()));
+  restoreList();
   // Several URLs pasted in the URL field open the list editor with them.
   urlInput.addEventListener('paste', (e) => {
     const text = e.clipboardData?.getData('text') ?? '';
