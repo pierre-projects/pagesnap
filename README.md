@@ -235,8 +235,8 @@ Or `pagesnap --ui` after `npm link`. This starts a small server on `http://local
 - **Lists in History:** the captures of a list are grouped into one card, with up to four of its pages and the number of captures. **Open** (or a click on the card) shows its captures, with the list's name, **Download all**, and **Delete list**; **All captures** or Esc goes back. The search also finds a list by its name. **Show in History** at the end of a list opens it there.
 - **Delete several captures:** click **Select** in History, or the check box that shows on a card when you point at it. Then click the cards to select them; Shift+click selects every card between two. **Select all** selects the captures that the search shows. Selecting a list card selects all its captures. **Delete** removes them from the list at once, and **Undo** (or Ctrl+Z) brings them back for 6 seconds. After that, their files are deleted. Keys: Ctrl+A selects all, Delete deletes the selection, Esc stops selecting.
 - The sidebar has every CLI option. The UI keeps your options and theme between visits. On a phone, the options fold into one line.
-- Captures go to `./captures` as `<host>-<timestamp>.<ext>` (pages of a list as `<host>_<path>-<timestamp>.<ext>`). The URL and options of each capture go to `captures/.pagesnap-history.json`. Framed captures also keep their unframed screens in `captures/.frames/`. Two UI servers can share one folder safely.
-- Captures run one at a time. Extra requests wait in a queue.
+- Captures go to `./captures` as `<host>-<timestamp>.<ext>` (pages of a list as `<host>_<path>-<timestamp>.<ext>`). The URL and options of each capture, and the names of your lists, go to `captures/.pagesnap-history.json`. Framed captures also keep their unframed screens in `captures/.frames/`. Two UI servers can share one folder safely.
+- Up to three captures run at the same time, single captures and list pages alike. Extra requests wait in a queue, in the order they came.
 
 | UI option | Default | |
 |---|---|---|
@@ -250,6 +250,7 @@ The server only listens on `127.0.0.1`. It rejects requests with a foreign `Host
 
 - Sites with bot protection (Cloudflare challenges, some image sites) may serve a block page to headless browsers.
 - Pages behind a login aren't supported yet.
+- Finding the pages of a site reads the HTML of each page, so on a site whose links all come from JavaScript, only the links of the first page are found. A list holds at most 200 pages.
 - Long single-page PDFs are capped at 200 in (19,200 px) by the PDF format; beyond that Chromium paginates.
 
 `test/torture.html` is a local page that exercises every case above:
