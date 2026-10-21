@@ -29,6 +29,8 @@
   <symbol id="i-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8" fill="currentColor"/><circle cx="4.5" cy="12" r=".8" fill="currentColor"/><circle cx="4.5" cy="18" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l3 3 5-6"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
 </svg>
@@ -343,6 +345,7 @@
             <span class="hint" id="bcount" aria-live="polite"></span>
             <span class="grow"></span>
             <label class="btn ghost" title="Load URLs from a .txt or .csv file"><svg aria-hidden="true"><use href="#i-file"/></svg>Load a file<input type="file" id="bfile" accept=".txt,.csv,.tsv,text/plain,text/csv" class="sr"></label>
+            <input type="text" id="bname" class="nameinput" maxlength="80" spellcheck="false" placeholder="Name the list (optional)" aria-label="List name, optional">
             <button class="btn primary" id="bgo" type="button" disabled>Capture pages</button>
           </div>
           <div id="bproblems"></div>
@@ -372,6 +375,18 @@
     </section>
 
     <section class="view" id="history" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="grouphead" id="grouphead" hidden>
+        <button class="backlink" id="gback" type="button" title="Back to all captures">
+          <svg aria-hidden="true"><use href="#i-left"/></svg>All captures<kbd>Esc</kbd>
+        </button>
+        <div class="jobhead">
+          <div class="jobtitle">
+            <h2 id="gtitle"></h2>
+            <div class="jobmeta" id="gmeta"></div>
+          </div>
+          <div class="toolbar" id="gactions"></div>
+        </div>
+      </div>
       <div class="histbar">
         <div class="search"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="hsearch" type="search" placeholder="Search captures" aria-label="Search captures"></div>
         <span class="histcount" id="hinfo"></span>

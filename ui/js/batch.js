@@ -6,7 +6,8 @@ import { api, json, fileUrl, zipUrl } from './api.js';
 import { fmtMs, fmtSize, fmtAbout, fmtElapsed, prettyUrl, viewportLabel, partsText } from './format.js';
 import { toast } from './toast.js';
 import { showTab } from './tabs.js';
-import { emit } from './events.js';
+import { emit, on } from './events.js';
+import { defaultListName, nameButton } from './listname.js';
 import * as store from './store.js';
 import { buildRequest, saveForm, closeOptions } from './options.js';
 import { urlInput, checkUrl, withScheme } from './url.js';
@@ -328,20 +329,21 @@ async function start(urls) {
   goBtn.disabled = true;
   let res;
   try {
-    res = await api('/api/batch', json({ ...req, urls }));
+    res = await api('/api/batch', json({ ...req, urls, name: $('#bname').value.trim() }));
   } catch (err) {
     toast(err.message);
     checkList();
     return;
   }
   const b = batch = {
-    id: res.id, req, started: Date.now(), ended: false,
+    id: res.id, req, name: $('#bname').value.trim(), started: Date.now(), ended: false,
     items: res.jobs.map((j, i) => ({ id: j.id, url: j.url, n: i + 1, state: 'queued' })),
   };
   filter = 'all';
   marks = null;
   // Kept so the list's results come back after a reload.
-  store.patch({ lastList: { id: b.id, req, started: b.started, items: b.items.map(({ id, url, n }) => ({ id, url, n })) } });
+  store.patch({ lastList: { id: b.id, req, name: b.name, started: b.started, items: b.items.map(({ id, url, n }) => ({ id, url, n })) } });
+  $('#bname').value = ''; // the next list starts without a name
   showRun();
   b.timer = setInterval(() => renderHead(b), 1000);
   follow(b);
@@ -439,7 +441,7 @@ async function restoreList() {
   const saved = store.load().lastList;
   if (!saved?.id || !Array.isArray(saved.items)) return;
   const b = {
-    id: saved.id, req: saved.req, started: saved.started, endedAt: saved.endedAt, ended: false,
+    id: saved.id, req: saved.req, name: saved.name ?? '', started: saved.started, endedAt: saved.endedAt, ended: false,
     items: saved.items.map((x) => ({ ...x, state: 'queued' })),
   };
   let status = null;
@@ -529,7 +531,7 @@ function renderHead(b) {
   const failed = count('error');
   const cancelled = count('cancelled');
   const finished = done + failed + cancelled;
-  $('#btitle').textContent = `List of ${n} ${n === 1 ? 'page' : 'pages'}`;
+  renderTitle(b);
   const status = !b.ended ? pill('running', `Capturing · ${finished} of ${n} done`)
     : done === n ? pill('done', n === 1 ? 'Saved' : `All ${n} saved`)
     : !done ? pill('error', cancelled === n ? 'Cancelled' : 'Nothing saved')
@@ -569,6 +571,7 @@ function renderHead(b) {
     done ? btn(`Download all (${done})`, 'down', { href: `/api/batches/${b.id}/zip`, class: 'btn primary', title: 'Download every saved page as one ZIP file' }) : null,
     notSaved.length ? btn(`Try ${notSaved.length} again`, 'redo', { title: 'Capture the pages that were not saved again', onclick: () => start(notSaved) }) : null,
     btn('Edit list', 'list', { title: 'Change the list and capture it again. Its pages are marked with how they went.', onclick: () => openList(b.items.map((x) => x.url).join('\n'), { from: b }) }),
+    done ? btn('Show in History', 'stack', { class: 'btn ghost', title: 'Open this list in History, where its captures are grouped', onclick: () => emit('history-list', b.id) }) : null,
     btn('New list', null, { class: 'btn ghost', title: 'Start an empty list. These captures stay in History.', onclick: newList }),
   ].filter(Boolean));
 }
@@ -693,7 +696,28 @@ export function backToList() {
   return true;
 }
 
+// The list's name over its results: click it to rename. Drawn again only when it changes, so a
+// rename in progress is not undone by the one-second update.
+function renderTitle(b) {
+  const h = $('#btitle');
+  const fallback = defaultListName(b.items.map((x) => x.url));
+  const key = `${b.id}\n${b.name}\n${fallback}`;
+  if (h.querySelector('input') || h.dataset.key === key) return;
+  h.dataset.key = key;
+  h.replaceChildren(nameButton(h, { id: b.id, name: b.name, fallback }));
+}
+
 export function initBatch() {
+  on('list-renamed', (id, name) => {
+    if (batch?.id !== id) return;
+    batch.name = name;
+    const saved = store.load().lastList;
+    if (saved?.id === id) store.patch({ lastList: { ...saved, name } });
+    // The saved name replaces the text field, if the rename was made here.
+    $('#btitle').replaceChildren();
+    delete $('#btitle').dataset.key;
+    renderTitle(batch);
+  });
   area.addEventListener('input', () => { checkList(); store.patch({ list: area.value }); });
   area.addEventListener('scroll', () => { $('#bgutter').scrollTop = area.scrollTop; });
   area.addEventListener('keydown', (e) => {

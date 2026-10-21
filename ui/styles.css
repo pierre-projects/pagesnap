@@ -349,6 +349,44 @@ details.log[open] summary svg { transform: rotate(90deg); }
 .thumb img { width: 100%; height: auto; display: block; }
 .thumb .pdf { place-self: center; font: 700 22px var(--mono); color: var(--muted); }
 .thumb .fmt { position: absolute; top: 8px; left: 8px; font: 700 10px var(--mono); padding: 2px 6px; border-radius: 4px; background: rgb(0 0 0 / .62); color: #fff; letter-spacing: .04em; }
+.thumb .fmt svg { width: 11px; height: 11px; vertical-align: -2px; margin-right: 4px; }
+
+/* A list in History: a stack of cards, with up to four of its pages in a mosaic. */
+.listcard { overflow: visible; }
+.listcard::before, .listcard::after {
+  content: ""; position: absolute; left: 8px; right: 8px; height: 10px; border: 1px solid var(--border);
+  border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--panel); z-index: -1;
+}
+.listcard::before { top: -5px; }
+.listcard::after { top: -9px; left: 16px; right: 16px; opacity: .6; }
+.listcard .thumb { border-radius: var(--radius) var(--radius) 0 0; }
+.mosaic { display: grid; width: 100%; height: 100%; gap: 2px; background: var(--border); }
+.mosaic.n2 { grid-template-columns: 1fr 1fr; }
+.mosaic.n3, .mosaic.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.mosaic.n3 .tile:first-child { grid-row: 1 / 3; }
+.mosaic .tile { overflow: hidden; background: var(--panel-3); display: grid; place-items: start center; min-height: 0; }
+.mosaic .tile img { width: 100%; height: auto; display: block; }
+.mosaic .tile .pdf { place-self: center; font: 700 14px var(--mono); color: var(--muted); }
+
+/* A list's name as a title: click it to rename. */
+.namebtn {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%; border: 0; background: none; padding: 2px 6px;
+  margin-left: -6px; border-radius: 6px; font: inherit; color: inherit; cursor: text; text-align: left;
+}
+.namebtn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.namebtn svg { width: 14px; height: 14px; flex: none; color: var(--faint); opacity: 0; transition: opacity .12s; }
+.namebtn:hover { background: var(--panel-2); }
+.namebtn:hover svg, .namebtn:focus-visible svg { opacity: 1; }
+.renameinput {
+  width: min(100%, 520px); height: 32px; margin-left: -6px; padding: 0 6px; font: inherit; border-radius: 6px;
+  border: 1px solid var(--accent); background: var(--panel); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.renameinput:focus { outline: none; }
+.grouphead .jobhead { margin-bottom: 12px; }
+.grouphead .pill svg { width: 12px; height: 12px; }
+.nameinput { height: 34px; width: 220px; max-width: 100%; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+.nameinput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+@media (hover: none) { .namebtn svg { opacity: 1; } }
 .card .info { padding: 10px 12px 4px; }
 .card .name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .sub { font-size: 12px; color: var(--faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
