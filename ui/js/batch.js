@@ -3,7 +3,7 @@
 
 import { $, el, btn, icon } from './dom.js';
 import { api, json, fileUrl, zipUrl } from './api.js';
-import { fmtMs, fmtSize, prettyUrl, viewportLabel, partsText } from './format.js';
+import { fmtMs, fmtSize, fmtAbout, fmtElapsed, prettyUrl, viewportLabel, partsText } from './format.js';
 import { toast } from './toast.js';
 import { showTab } from './tabs.js';
 import { emit } from './events.js';
@@ -16,6 +16,54 @@ import { showCapture } from './result.js';
 // Same limit as MAX_LIST in lib/snap/batch.js.
 const MAX_LIST = 200;
 const STEP_ACTIVE = { load: 'Loading', cookies: 'Cleaning up', scroll: 'Scrolling', capture: 'Saving' };
+// Time per page for estimates until real times are known.
+const DEFAULT_MS = 8000;
+let PARALLEL = 3; // pages the server captures at the same time (/api/config)
+let pastMs = null; // the usual time of the recent captures in History
+
+// The server's number of captures at the same time (from /api/config).
+export function setParallel(n) { if (Number.isInteger(n) && n > 0) PARALLEL = n; }
+
+// The usual (median) time of the last 30 captures, for the estimate before a list starts.
+async function loadPastTimes() {
+  try {
+    const ms = (await api('/api/captures')).map((c) => c.ms).filter((n) => n > 0).slice(0, 30).sort((a, b) => a - b);
+    pastMs = ms.length ? ms[Math.floor(ms.length / 2)] : null;
+  } catch { /* keep the default */ }
+  if (!$('#bcompose').hidden) checkList();
+}
+
+// How long one page of `b` takes: the pages of the list that ended, else the recent captures.
+function perPage(b) {
+  const ended = b?.items.filter((x) => x.ms) ?? [];
+  if (ended.length) return ended.reduce((s, x) => s + x.ms, 0) / ended.length;
+  return pastMs ?? DEFAULT_MS;
+}
+
+// When each waiting page of `b` should start, and when the list should end, in ms from now.
+// Fills PARALLEL slots in order; a running page frees its slot after about one page's time.
+function schedule(b) {
+  const avg = perPage(b);
+  const now = Date.now();
+  const slots = b.items.filter((x) => x.state === 'running')
+    .map((x) => Math.max(avg - (now - (x.startedAt ?? now)), avg * 0.15));
+  while (slots.length < PARALLEL) slots.push(0);
+  const starts = new Map();
+  for (const it of b.items) {
+    if (it.state !== 'queued' || it.cancelling) continue;
+    const i = slots.indexOf(Math.min(...slots));
+    starts.set(it.id, slots[i]);
+    slots[i] += avg;
+  }
+  return { starts, left: Math.max(...slots) };
+}
+
+// The layout of the results (grid | rows) and which pages show (all, or one group).
+let view = store.load().listView === 'rows' ? 'rows' : 'grid';
+let filter = 'all';
+const GROUPS = [['all', 'All'], ['queued', 'Waiting'], ['running', 'Running'], ['done', 'Saved'], ['failed', 'Not saved']];
+const groupOf = (it) => (it.state === 'error' || it.state === 'cancelled' ? 'failed' : it.state);
+const shows = (it) => filter === 'all' || groupOf(it) === filter;
 
 const area = $('#blist');
 const goBtn = $('#bgo');
@@ -57,6 +105,7 @@ export function openList(text) {
   if (!site.value) site.value = store.load().findSite ?? urlInput.value.trim();
   if (!finding) findStatus(DEFAULT_FIND_HINT);
   checkList();
+  loadPastTimes();
   area.focus();
 }
 
@@ -69,9 +118,13 @@ function checkList() {
   const ok = n > 0 && !bad.length && n <= MAX_LIST;
   goBtn.disabled = !ok;
   goBtn.textContent = n > 1 ? `Capture ${n} pages` : n === 1 ? 'Capture 1 page' : 'Capture pages';
+  // The estimate: the pages run PARALLEL at a time, each about as long as recent captures.
+  const each = pastMs ?? DEFAULT_MS;
+  const est = ok ? ` · takes ${fmtAbout(Math.ceil(n / PARALLEL) * each)}` : '';
   $('#bcount').textContent = !n ? 'Type or paste one URL on each line.'
     : n > MAX_LIST ? `${n} URLs. The most is ${MAX_LIST}: split the list.`
-    : `${n} ${n === 1 ? 'URL' : 'URLs'}${bad.length ? `, ${bad.length} not valid` : ''}`;
+    : `${n} ${n === 1 ? 'URL' : 'URLs'}${bad.length ? `, ${bad.length} not valid` : ''}${est}`;
+  $('#bcount').title = ok ? `${PARALLEL} pages at a time, about ${fmtMs(Math.round(each / 100) * 100)} each${pastMs ? ': the usual time of your recent captures' : ''}. Big or slow pages take longer.` : '';
 
   const box = $('#bproblems');
   box.replaceChildren();
@@ -217,8 +270,9 @@ async function start(urls) {
   }
   const b = batch = {
     id: res.id, req, started: Date.now(), ended: false,
-    items: res.jobs.map((j) => ({ id: j.id, url: j.url, state: 'queued' })),
+    items: res.jobs.map((j, i) => ({ id: j.id, url: j.url, n: i + 1, state: 'queued' })),
   };
+  filter = 'all';
   showRun();
   b.timer = setInterval(() => renderHead(b), 1000);
   follow(b);
@@ -244,7 +298,7 @@ function follow(b) {
 let changedTimer;
 function update(b, it, type, data) {
   if (type === 'queued') { it.ahead = data.ahead; if (it.state !== 'queued') return; }
-  else if (type === 'step') { it.state = 'running'; it.step = data; it.progress = null; }
+  else if (type === 'step') { it.state = 'running'; it.step = data; it.progress = null; it.startedAt ??= Date.now(); }
   else if (type === 'progress') {
     it.progress = Math.min(1, data.y / data.height);
     if (b === batch) setProgress(it);
@@ -252,12 +306,16 @@ function update(b, it, type, data) {
   } else if (type === 'done') {
     it.state = 'done';
     it.entry = data;
+    it.ms = data.ms || (it.startedAt && Date.now() - it.startedAt);
     // History and its badge, at most once a second while pages finish.
     clearTimeout(changedTimer);
     changedTimer = setTimeout(() => emit('captures-changed'), 1000);
   } else if (type === 'error') {
     it.state = data.cancelled ? 'cancelled' : 'error';
-    it.error = data.message;
+    it.error = data.cancelled ? 'Cancelled' : data.message;
+    it.cancelling = false;
+    // A failed page counts toward the time per page; a cancelled one says nothing about it.
+    if (!data.cancelled && it.startedAt) it.ms = Date.now() - it.startedAt;
   }
   if (b !== batch) return;
   renderCard(it);
@@ -284,6 +342,17 @@ async function cancelAll(b) {
   catch (err) { toast(err.message); }
 }
 
+// Cancel one page of the list. The others go on; a waiting page never starts.
+async function cancelOne(it) {
+  it.cancelling = true;
+  renderCard(it);
+  let ok = false;
+  try { ({ ok } = await api(`/api/jobs/${it.id}/cancel`, { method: 'POST' })); }
+  catch (err) { toast(err.message); }
+  // Not cancelled: the page ended meanwhile, and its own event redraws it.
+  if (!ok && it.cancelling) { it.cancelling = false; renderCard(it); }
+}
+
 // ---------- the results ----------
 
 // Show the list that runs or ran last (after "Back to the list").
@@ -299,10 +368,47 @@ function showRun() {
   $('#bcompose').hidden = true;
   $('#brun').hidden = false;
   $('#bnotices').replaceChildren();
+  renderAll();
+}
+
+// Draw every page again, in the layout that is set.
+function renderAll() {
   cards.clear();
-  $('#bgrid').replaceChildren();
+  const box = $('#bgrid');
+  box.className = view === 'rows' ? 'brows' : 'grid batchgrid';
+  box.replaceChildren();
+  for (const b of $('#bview').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === view));
+  batch.sched = schedule(batch).starts;
   batch.items.forEach(renderCard);
+  delete $('#bfilters').dataset.key;
   renderHead(batch);
+}
+
+function setView(v) {
+  view = v;
+  store.patch({ listView: v });
+  if (batch) renderAll();
+}
+
+function setFilter(f) {
+  filter = f;
+  for (const it of batch.items) { const c = cards.get(it.id); if (c) c.hidden = !shows(it); }
+  delete $('#bfilters').dataset.key;
+  renderHead(batch);
+}
+
+// The filter buttons with the count of each group: "All 120", "Waiting 80", "Saved 37", ...
+function renderFilters(b) {
+  const counts = { all: b.items.length };
+  for (const it of b.items) counts[groupOf(it)] = (counts[groupOf(it)] ?? 0) + 1;
+  const box = $('#bfilters');
+  const key = `${filter}:${GROUPS.map(([g]) => counts[g] ?? 0).join(',')}`;
+  $('#bnone').hidden = !b.items.length || (counts[filter] ?? 0) > 0;
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.replaceChildren(...GROUPS.filter(([g]) => g === 'all' || g === filter || counts[g]).map(([g, label]) =>
+    el('button', { type: 'button', class: `chip ${g}`, 'aria-pressed': String(filter === g), onclick: () => setFilter(g) },
+      label, el('span', { class: 'count' }, String(counts[g] ?? 0)))));
 }
 
 function renderHead(b) {
@@ -313,13 +419,20 @@ function renderHead(b) {
   const cancelled = count('cancelled');
   const finished = done + failed + cancelled;
   $('#btitle').textContent = `List of ${n} ${n === 1 ? 'page' : 'pages'}`;
-  const secs = Math.round(((b.endedAt ?? Date.now()) - b.started) / 1000);
   const status = !b.ended ? pill('running', `Capturing · ${finished} of ${n} done`)
     : done === n ? pill('done', n === 1 ? 'Saved' : `All ${n} saved`)
     : !done ? pill('error', cancelled === n ? 'Cancelled' : 'Nothing saved')
     : pill('error', `${done} saved · ${n - done} not saved`);
+  // While it runs: the time so far and an estimate of the time left, from the pages that ended.
+  let left = null;
+  if (!b.ended) {
+    const s = schedule(b);
+    b.sched = s.starts;
+    left = s.left;
+  }
   $('#bmeta').replaceChildren(status, ...[
-    `${secs} s`,
+    b.ended ? `Took ${fmtElapsed(b.endedAt - b.started)}` : `${fmtElapsed(Date.now() - b.started)} so far`,
+    left !== null && finished < n ? `${fmtAbout(left)} left` : null,
     failed && !b.ended ? `${failed} failed` : null,
     viewportLabel(b.req),
     b.req.format.toUpperCase(),
@@ -328,6 +441,9 @@ function renderHead(b) {
   $('#boverall').setAttribute('aria-valuenow', String(Math.round((finished / n) * 100)));
   $('#boverall').classList.toggle('ended', b.ended && done === n);
   if (!b.ended && !document.hidden) document.title = `Capturing ${finished}/${n}… · pagesnap`;
+  renderFilters(b);
+  // Waiting and running pages: their start estimate and time, without redrawing them.
+  for (const it of b.items) if (it.state === 'queued' || it.state === 'running') setProgress(it);
 
   const bar = $('#bactions');
   const key = `${b.id}:${b.ended ? `end:${done}` : 'run'}`;
@@ -346,13 +462,63 @@ function renderHead(b) {
 }
 
 function cardSub(it) {
-  if (it.state === 'queued') return it.ahead ? `Waiting · ${it.ahead} ahead` : 'Waiting';
-  if (it.state === 'running') return `${STEP_ACTIVE[it.step] || 'Working'}${it.step === 'scroll' && it.progress != null ? ` · ${Math.round(it.progress * 100)}%` : ''}`;
+  if (it.cancelling) return 'Cancelling…';
+  if (it.state === 'queued') {
+    const start = batch?.sched?.get(it.id);
+    return start === undefined ? 'Waiting' : start < 3000 ? 'Starts soon' : `Starts in ${fmtAbout(start)}`;
+  }
+  if (it.state === 'running') {
+    return [STEP_ACTIVE[it.step] || 'Working', it.step === 'scroll' && it.progress != null ? `${Math.round(it.progress * 100)}%` : null,
+      it.startedAt ? fmtElapsed(Date.now() - it.startedAt) : null].filter(Boolean).join(' · ');
+  }
   if (it.state === 'done') return [fmtSize(it.entry.size), fmtMs(it.entry.ms), partsText(it.entry), it.entry.warnings?.length ? 'Check the result' : null].filter(Boolean).join(' · ');
   return it.error || 'Not saved';
 }
 
+const STATE_LABEL = { queued: 'Waiting', error: 'Failed', cancelled: 'Cancelled', done: 'Saved' };
+const stateLabel = (it) => (it.state === 'running' ? STEP_ACTIVE[it.step] || 'Starting' : STATE_LABEL[it.state]);
+
+// The buttons of a page: open and download when saved, cancel while it waits or runs.
+function itemActions(it, name, { wide = false } = {}) {
+  const c = it.entry;
+  if (it.state === 'done') {
+    return [
+      c.files.length > 1
+        ? btn('', 'down', { class: 'btn icon', href: zipUrl(c), title: `Download all ${c.files.length} parts as a ZIP file`, 'aria-label': `Download ${name}` })
+        : btn('', 'down', { class: 'btn icon', href: fileUrl(c.files[0], true), title: 'Download', 'aria-label': `Download ${name}` }),
+      btn('Open', null, { onclick: () => openCapture(it) }),
+    ];
+  }
+  if (it.state === 'queued' || it.state === 'running') {
+    return [btn(wide ? 'Cancel' : '', 'x', {
+      class: `btn${wide ? '' : ' icon'}`, disabled: !!it.cancelling,
+      title: it.state === 'queued' ? 'Cancel this page: it will not start' : 'Cancel this page',
+      'aria-label': `Cancel ${name}`, onclick: () => cancelOne(it),
+    })];
+  }
+  return [];
+}
+
+// One page as a row of the List layout: number, state, URL, details, buttons.
+function renderRow(it) {
+  const sub = cardSub(it);
+  return el('div', { class: `brow ${it.state}${it.cancelling ? ' cancelling' : ''}`, 'data-id': it.id },
+    el('span', { class: 'bn' }, String(it.n)),
+    el('span', { class: 'bstate' },
+      it.state === 'running' ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : el('span', { class: 'd', 'aria-hidden': 'true' }),
+      stateLabel(it)),
+    el('div', { class: 'bmain' },
+      el('a', { class: 'name', href: it.url, target: '_blank', rel: 'noopener noreferrer', title: `Open ${it.url} in a new tab` }, it.url),
+      el('div', { class: 'sub', title: sub }, sub)),
+    el('div', { class: 'acts' }, ...itemActions(it, prettyUrl(it.url))),
+    it.state === 'running' ? el('span', { class: 'bar' }) : null);
+}
+
 function renderCard(it) {
+  if (view === 'rows') {
+    placeCard(it, renderRow(it));
+    return;
+  }
   const name = prettyUrl(it.url);
   const c = it.entry;
   let thumb;
@@ -361,36 +527,40 @@ function renderCard(it) {
       c.format === 'pdf' ? el('span', { class: 'pdf' }, 'PDF') : el('img', { src: fileUrl(c.files[0]), alt: '', loading: 'lazy' }),
       el('span', { class: 'fmt' }, c.format.toUpperCase()));
   } else {
-    const label = { queued: 'Waiting', running: STEP_ACTIVE[it.step] || 'Starting', error: 'Failed', cancelled: 'Cancelled' }[it.state];
     thumb = el('div', { class: 'thumb state' },
       it.state === 'running' ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : it.state === 'queued' ? null : icon('alert'),
-      el('span', {}, label),
+      el('span', {}, stateLabel(it)),
       it.state === 'running' ? el('span', { class: 'bar' }) : null);
   }
   const sub = cardSub(it);
-  const card = el('div', { class: `card bcard ${it.state}`, 'data-id': it.id },
+  const acts = itemActions(it, name, { wide: true });
+  const card = el('div', { class: `card bcard ${it.state}${it.cancelling ? ' cancelling' : ''}`, 'data-id': it.id },
     thumb,
     el('div', { class: 'info' },
       el('div', { class: 'name', title: it.url }, name),
       el('div', { class: 'sub', title: sub }, sub)),
-    it.state === 'done' ? el('div', { class: 'acts' },
-      c.files.length > 1
-        ? btn('', 'down', { class: 'btn icon', href: zipUrl(c), title: `Download all ${c.files.length} parts as a ZIP file`, 'aria-label': `Download ${name}` })
-        : btn('', 'down', { class: 'btn icon', href: fileUrl(c.files[0], true), title: 'Download', 'aria-label': `Download ${name}` }),
-      btn('Open', null, { onclick: () => openCapture(it) })) : null);
+    acts.length ? el('div', { class: 'acts' }, ...acts) : null);
+  placeCard(it, card);
+}
+
+// Put the new element of page `it` where its old one was (or at the end), and apply the filter.
+function placeCard(it, node) {
+  node.hidden = !shows(it);
   const old = cards.get(it.id);
-  if (old) old.replaceWith(card); else $('#bgrid').append(card);
-  cards.set(it.id, card);
+  if (old) old.replaceWith(node); else $('#bgrid').append(node);
+  cards.set(it.id, node);
   setProgress(it);
 }
 
-// The scroll progress of a running page, without redrawing its card.
+// The progress and time of a waiting or running page, without redrawing it.
 function setProgress(it) {
   const card = cards.get(it.id);
-  if (!card || it.state !== 'running') return;
-  const bar = card.querySelector('.thumb .bar');
+  if (!card || (it.state !== 'running' && it.state !== 'queued')) return;
+  const bar = card.querySelector('.bar');
   if (bar) bar.style.width = `${(it.progress ?? 0) * 100}%`;
-  card.querySelector('.sub').textContent = cardSub(it);
+  const sub = card.querySelector('.sub');
+  const text = cardSub(it);
+  if (sub.textContent !== text) { sub.textContent = text; sub.title = text; }
 }
 
 function openCapture(it) {
@@ -419,6 +589,7 @@ export function initBatch() {
   goBtn.addEventListener('click', () => { const urls = checkList(); if (urls) start(urls); });
   $('#bfile').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
   $('#findform').addEventListener('submit', findSite);
+  $('#bview').addEventListener('click', (e) => { const v = e.target.closest('[data-v]')?.dataset.v; if (v && v !== view) setView(v); });
   $('#fmode').value = store.load().findMode ?? 'auto';
   $('#listbtn').addEventListener('click', () => (batch && !batch.ended ? showBatch() : openList()));
   $('#listlink').addEventListener('click', () => openList());

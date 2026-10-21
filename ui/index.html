@@ -352,7 +352,16 @@
           </div>
           <div class="overall" role="progressbar" aria-label="Pages finished" id="boverall"><div class="fill" id="bbar"></div></div>
           <div id="bnotices"></div>
+          <div class="bviewbar">
+            <div class="bfilters" id="bfilters" role="group" aria-label="Show the pages that are"></div>
+            <span class="grow"></span>
+            <div class="zoom" id="bview" role="group" aria-label="Layout">
+              <button type="button" data-v="grid" aria-pressed="true">Grid</button>
+              <button type="button" data-v="rows" aria-pressed="false">List</button>
+            </div>
+          </div>
           <div class="grid batchgrid" id="bgrid"></div>
+          <div class="hint bnone" id="bnone" hidden>No pages match this filter.</div>
         </div>
       </div>
     </section>

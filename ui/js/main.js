@@ -18,7 +18,7 @@ import { initUrl } from './url.js';
 import { initResult } from './result.js';
 import { initCapture, setSteps } from './capture.js';
 import { initHistory } from './history.js';
-import { initBatch } from './batch.js';
+import { initBatch, setParallel } from './batch.js';
 
 initTheme();
 initTabs();
@@ -30,7 +30,8 @@ initHistory();
 initBatch();
 showEmpty();
 
-api('/api/config').then(({ devices, steps }) => {
+api('/api/config').then(({ devices, steps, parallel }) => {
   setSteps(steps);
+  setParallel(parallel);
   setDevices(devices);
 }).catch(() => {});

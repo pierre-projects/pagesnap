@@ -4,6 +4,22 @@ export const fmtSize = (b) => b < 1024 ? `${b} B` : b < 1048576 ? `${Math.round(
 export const fmtMs = (ms) => ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 export const fmtPx = (n) => `${Math.round(n).toLocaleString()} px`;
 
+// A rough duration for estimates: "a few seconds", "about 40 s", "about 12 min", "about 1 h 20 min".
+export function fmtAbout(ms) {
+  const s = ms / 1000;
+  if (s < 10) return 'a few seconds';
+  if (s < 60) return `about ${Math.round(s / 5) * 5} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `about ${m} min`;
+  return `about ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
+}
+
+// Time that has passed: "45 s", "3 min 05 s".
+export const fmtElapsed = (ms) => {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
+};
+
 export function ago(t) {
   if (!t) return '';
   const s = Math.round((Date.now() - t) / 1000);
