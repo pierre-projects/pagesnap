@@ -317,6 +317,21 @@
               <div class="jobmeta"><span>Every page gets the same capture options. Three pages load at the same time.</span></div>
             </div>
           </div>
+          <form class="findbox" id="findform" autocomplete="off" novalidate>
+            <div class="findrow">
+              <div class="findurl">
+                <svg aria-hidden="true"><use href="#i-search"/></svg>
+                <input id="fsite" type="text" placeholder="Find the pages of a site, for example example.com/blog" aria-label="Site to find the pages of" aria-describedby="fstatus" spellcheck="false" inputmode="url">
+              </div>
+              <select id="fmode" aria-label="Where to find the pages">
+                <option value="auto">Sitemap, else links</option>
+                <option value="sitemap">Sitemap only</option>
+                <option value="crawl">Follow links</option>
+              </select>
+              <button class="btn" id="fgo" type="submit">Find pages</button>
+            </div>
+            <div class="hint" id="fstatus" aria-live="polite">Reads the site's sitemap, or follows its links. A path, like example.com/blog, keeps only the pages under it.</div>
+          </form>
           <textarea id="blist" class="listarea" spellcheck="false" autocomplete="off" aria-label="URLs to capture, one on each line" aria-describedby="bcount"
             placeholder="https://example.com&#10;https://example.com/pricing&#10;news.ycombinator.com&#10;# Lines that start with # are skipped"></textarea>
           <div class="listbar">

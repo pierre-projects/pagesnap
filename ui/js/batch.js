@@ -9,7 +9,7 @@ import { showTab } from './tabs.js';
 import { emit } from './events.js';
 import * as store from './store.js';
 import { buildRequest, saveForm, closeOptions } from './options.js';
-import { urlInput, checkUrl } from './url.js';
+import { urlInput, checkUrl, withScheme } from './url.js';
 import { showBatchView, pill } from './view.js';
 import { showCapture } from './result.js';
 
@@ -52,6 +52,10 @@ export function openList(text) {
   $('#brun').hidden = true;
   if (text !== undefined) area.value = text;
   else if (!area.value) area.value = store.load().list ?? '';
+  // The site to search: the last one searched, else the URL field.
+  const site = $('#fsite');
+  if (!site.value) site.value = store.load().findSite ?? urlInput.value.trim();
+  if (!finding) findStatus(DEFAULT_FIND_HINT);
   checkList();
   area.focus();
 }
@@ -106,6 +110,88 @@ async function loadFile(file) {
   checkList();
   store.patch({ list: area.value });
   toast(`${urls.length} ${urls.length === 1 ? 'URL was' : 'URLs were'} added from ${file.name}.`);
+}
+
+// ---------- finding the pages of a site ----------
+
+const DEFAULT_FIND_HINT = $('#fstatus').textContent;
+let finding = null; // AbortController of the search in progress
+
+function findStatus(text, kind = '') {
+  const s = $('#fstatus');
+  s.className = `hint ${kind}`;
+  s.replaceChildren(...(kind === 'busy' ? [el('span', { class: 'spinner', 'aria-hidden': 'true' })] : []), text);
+}
+
+function setFinding(on) {
+  $('#fgo').textContent = on ? 'Stop' : 'Find pages';
+  $('#fsite').disabled = on;
+  $('#fmode').disabled = on;
+}
+
+// Ask the server for the pages of the site in the field, and add them to the list.
+async function findSite(e) {
+  e?.preventDefault();
+  if (finding) { finding.abort(); return; }
+  const site = $('#fsite').value.trim();
+  const problem = site ? checkUrl(site) : 'Type the address of a site.';
+  if (problem) { findStatus(problem, 'error'); $('#fsite').focus(); return; }
+  store.patch({ findSite: site, findMode: $('#fmode').value });
+  const controller = finding = new AbortController();
+  setFinding(true);
+  findStatus('Looking for the sitemap…', 'busy');
+  let result = null;
+  let error = null;
+  try {
+    const res = await fetch('/api/find', { ...json({ site, mode: $('#fmode').value }), signal: controller.signal });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `The server sent HTTP ${res.status}.`);
+    // One JSON object on each line, as the server finds pages.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const l of lines.filter(Boolean)) {
+        const m = JSON.parse(l);
+        if (m.type === 'progress') findStatus(`Found ${m.found} ${m.found === 1 ? 'page' : 'pages'}…`, 'busy');
+        else if (m.type === 'log' && /^(Reading|The site has no|The sitemap has no|The start page)/.test(m.message)) findStatus(m.message, 'busy');
+        else if (m.type === 'done') result = m;
+        else if (m.type === 'error') error = m.message;
+      }
+    }
+    if (!result && !error) error = 'The search stopped before it ended.';
+  } catch (err) {
+    error = controller.signal.aborted ? null : err.name === 'TypeError' ? 'The pagesnap server did not reply. Make sure that it is running.' : err.message;
+    if (controller.signal.aborted) findStatus('The search was stopped. Nothing was added.');
+  } finally {
+    finding = null;
+    setFinding(false);
+  }
+  if (error) { findStatus(error, 'error'); return; }
+  if (result) addFound(result, site);
+}
+
+// Add the pages found to the list, after what is there, and say what happened.
+function addFound({ urls, source, truncated }, site) {
+  const before = parseList(area.value);
+  const have = new Set(before.map((x) => x.url));
+  const fresh = urls.filter((u) => !have.has(u));
+  area.value = [area.value.trimEnd(), ...fresh].filter(Boolean).join('\n');
+  store.patch({ list: area.value });
+  checkList();
+  const from = source === 'sitemap' ? 'from the sitemap' : 'by following links';
+  const added = fresh.length === urls.length ? `Added ${fresh.length} ${fresh.length === 1 ? 'page' : 'pages'} ${from}.`
+    : !fresh.length ? `Found ${urls.length} ${urls.length === 1 ? 'page' : 'pages'} ${from}. All of them are already in the list.`
+    : `Found ${urls.length} pages ${from}. Added the ${fresh.length} that were not in the list yet.`;
+  let hasPath = false;
+  try { hasPath = new URL(withScheme(site)).pathname.replace(/\/+$/, '') !== ''; } catch {}
+  const more = hasPath ? ' There are more: use a longer path to pick a smaller part.'
+    : ' The site has more: add a path to the address to pick a part, for example /blog.';
+  findStatus(`${added}${truncated ? more : ''}`, truncated ? 'warn' : 'ok');
 }
 
 // ---------- running a list ----------
@@ -332,6 +418,8 @@ export function initBatch() {
   });
   goBtn.addEventListener('click', () => { const urls = checkList(); if (urls) start(urls); });
   $('#bfile').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
+  $('#findform').addEventListener('submit', findSite);
+  $('#fmode').value = store.load().findMode ?? 'auto';
   $('#listbtn').addEventListener('click', () => (batch && !batch.ended ? showBatch() : openList()));
   $('#listlink').addEventListener('click', () => openList());
   // Several URLs pasted in the URL field open the list editor with them.

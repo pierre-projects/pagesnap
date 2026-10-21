@@ -336,6 +336,20 @@ details.log[open] summary svg { transform: rotate(90deg); }
 .listlink { margin: 18px 0 0; font-size: 13px; }
 .listlink button, .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-weight: 500; }
 .listlink button:hover, .linkish:hover { text-decoration: underline; }
+.findbox { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.findrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.findurl { flex: 1 1 260px; position: relative; min-width: 0; }
+.findurl svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--faint); pointer-events: none; }
+.findurl input { width: 100%; height: 34px; padding: 0 10px 0 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); }
+.findbox select { height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+.findurl input:focus, .findbox select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--panel); }
+.findbox input:disabled, .findbox select:disabled { opacity: .6; }
+#fgo { min-width: 100px; }
+.findbox .hint { margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.findbox .hint .spinner { width: 12px; height: 12px; border-width: 1.5px; color: var(--accent); }
+.findbox .hint.ok { color: var(--ok); }
+.findbox .hint.warn { color: var(--warn); }
+.findbox .hint.error { color: var(--err); }
 .listarea {
   display: block; width: 100%; min-height: 240px; height: 40vh; padding: 10px 12px; resize: vertical;
   border: 1px solid var(--border); border-radius: 9px; background: var(--panel);

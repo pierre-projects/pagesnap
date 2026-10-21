@@ -6,12 +6,14 @@
 import { parseArgs } from 'node:util';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { snap, snapMany, reframe, listDevices, normalize, parseUrlList, pageSlug, MAX_LIST } from '../lib/snap/index.js';
+import { snap, snapMany, reframe, listDevices, normalize, parseUrlList, pageSlug, findPages, MAX_LIST } from '../lib/snap/index.js';
 
 const HELP = `
 Usage: pagesnap <url> [options]
        pagesnap <url> <url...> [--out-dir dir] [-j 3] [options]
        pagesnap --list urls.txt [--out-dir dir] [-j 3] [options]
+       pagesnap --site <url> [--under path] [--out-dir dir] [options]
+       pagesnap pages <url> [--under path] [--limit 200] [--find auto|sitemap|crawl]
        pagesnap frame <image...> [--frame kind] [--frame-bg bg] [-d device | -w px -H px] [--url url] [--split screen] [-o file]
        pagesnap --ui [--port 4777] [--out-dir ./captures] [--no-open]
 
@@ -29,6 +31,16 @@ Capture a list of pages
       --list <file>         Read the URLs from this file (repeatable)
       --out-dir <dir>       Where the list's files go (default: the current folder)
   -j, --parallel <n>        Pages to capture at the same time (default 3)
+
+Find the pages of a site
+  pagesnap pages prints the pages of a site, one URL on each line, to make a list you can edit.
+  --site finds them and captures them all at once. The pages come from the site's sitemaps
+  (named in robots.txt, or at /sitemap.xml); with no sitemap, pagesnap follows the links on the
+  site, from the given URL down. A path in the URL (example.com/docs) keeps only the pages under it.
+      --site <url>          Capture every page of this site (up to 200)
+      --under <path>        Only pages under this path, for example blog or docs/api
+      --limit <n>           The most pages to find (default 200)
+      --find <mode>         auto | sitemap | crawl (default auto: the sitemap, else follow links)
 
 Output
   -o, --out <file>          Output file (default: <host>.<format>)
@@ -95,6 +107,8 @@ Examples
   pagesnap https://example.com --frame laptop --frame-bg gradient
   pagesnap example.com example.org/about --out-dir shots
   pagesnap --list urls.txt -d "iPhone 15 Pro" -j 4 --out-dir shots/mobile
+  pagesnap pages example.com > urls.txt
+  pagesnap --site example.com/blog --out-dir shots/blog
   pagesnap --ui
 `;
 
@@ -137,6 +151,10 @@ const { values: opt, positionals } = parseArgs({
     'no-open': { type: 'boolean' },
     list: { type: 'string', multiple: true },
     parallel: { type: 'string', short: 'j' },
+    site: { type: 'string' },
+    under: { type: 'string' },
+    limit: { type: 'string' },
+    find: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
     url: { type: 'string' },
   },
@@ -177,6 +195,11 @@ if (opt.ui) {
   } catch (e) {
     die(e.message.split('\n')[0]);
   }
+} else if (positionals[0] === 'pages' && !opt.help) {
+  // pagesnap pages <url>: print the site's pages, to edit and pass to --list.
+  if (!positionals[1]) die('Give the site, for example: pagesnap pages example.com > urls.txt');
+  const { urls } = await sitePages(positionals[1], opt.limit === undefined ? 200 : Number(opt.limit));
+  for (const u of urls) console.log(u);
 } else {
   const urls = positionals.slice();
   for (const file of opt.list ?? []) {
@@ -185,12 +208,17 @@ if (opt.ui) {
     catch (e) { die(`The list "${file}" could not be read. ${e.code === 'ENOENT' ? 'The file does not exist.' : e.message}`); }
     urls.push(...parseUrlList(text));
   }
+  if (opt.site && !opt.help) {
+    const limit = opt.limit === undefined ? MAX_LIST : Number(opt.limit);
+    if (limit > MAX_LIST) die(`A capture can have at most ${MAX_LIST} pages. Use --limit ${MAX_LIST} or less, or use --under to pick a part of the site.`);
+    urls.push(...(await sitePages(opt.site, limit)).urls);
+  }
   if (opt.help || urls.length === 0) {
     if (opt.list && !opt.help) die('The list has no URLs. Put one URL on each line.');
     console.log(HELP.trim());
     process.exit(opt.help ? 0 : 1);
   }
-  if (urls.length > 1 || opt.list) await captureList([...new Set(urls)]);
+  if (urls.length > 1 || opt.list || opt.site) await captureList([...new Set(urls)]);
   else await captureOne(urls[0]);
 }
 
@@ -292,6 +320,29 @@ async function captureList(urls) {
   console.error(`[pagesnap] ${n - failed.length} of ${n} pages were captured. ${failed.length} failed:`);
   for (const r of failed) console.error(`  ${r.url}: ${r.error}`);
   process.exit(1);
+}
+
+// The pages of `site`, for `pagesnap pages` and --site. Progress goes to stderr.
+async function sitePages(site, limit) {
+  if (!Number.isInteger(limit) || limit < 1) die('The --limit value must be a whole number of 1 or more.');
+  const controller = new AbortController();
+  process.once('SIGINT', () => controller.abort());
+  let last = Date.now();
+  try {
+    const r = await findPages(site, {
+      limit, under: opt.under, mode: opt.find ?? 'auto', signal: controller.signal,
+      onLog: (msg) => console.error('[pagesnap]', msg),
+      onProgress: ({ found }) => {
+        if (Date.now() - last < 1000) return;
+        last = Date.now();
+        console.error(`[pagesnap] ${found} pages so far`);
+      },
+    });
+    if (r.truncated) console.error(`[pagesnap] The site has more than ${limit} pages. Use --limit for more, or --under to pick a part of the site.`);
+    return r;
+  } catch (e) {
+    die(e.message.split('\n')[0]);
+  }
 }
 
 async function readStdin() {

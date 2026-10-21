@@ -1,6 +1,6 @@
 # pagesnap
 
-Full-page screenshots from the command line or an optional local web UI: PNG, JPEG or PDF, split into parts or shown inside a phone, tablet, laptop or browser frame. Capture one page, or a whole list of pages at once. Works on Windows, macOS and Linux (needs Node 18.3+).
+Full-page screenshots from the command line or an optional local web UI: PNG, JPEG or PDF, split into parts or shown inside a phone, tablet, laptop or browser frame. Capture one page, a list of pages, or every page of a site. Works on Windows, macOS and Linux (needs Node 18.3+).
 
 ![A phone and a laptop frame made with pagesnap](docs/frames.png)
 
@@ -57,6 +57,24 @@ pagesnap --list urls.txt -j 6 --format jpeg
 - Every URL is checked first. If one is not valid, nothing is captured and the bad ones are listed.
 - One page failing does not stop the others. At the end, the failed pages are listed with their errors and the exit code is 1. Ctrl+C cancels the pages that are left.
 
+### Find the pages of a site
+
+`pagesnap pages` prints the pages of a site, one URL on each line, so you can check and edit the list before you capture it. `--site` finds the pages and captures them in one step.
+
+```bash
+pagesnap pages example.com > urls.txt
+pagesnap --list urls.txt --out-dir shots
+
+pagesnap --site example.com/blog --out-dir shots/blog
+pagesnap pages example.com --under docs --limit 50
+```
+
+- pagesnap reads the site's sitemaps first: the ones `robots.txt` names, else `/sitemap.xml`, `/sitemap_index.xml`, or `/wp-sitemap.xml`. Sitemap indexes and `.xml.gz` sitemaps work too.
+- With no sitemap, it follows the links on the site from the URL you give, at most 4 links deep. It stays on the same site, skips files (PDFs, images, ...), login and cart pages, and pages that `robots.txt` disallows, and drops `?query` copies of a page. If the first page has no links in its HTML (the site builds them with JavaScript), it opens that page in the browser to read them.
+- A path in the URL, like `example.com/blog`, keeps only the pages under it. `--under` does the same, for example `--under docs/api`. If the page at that path moved, the pages under its new place are kept.
+- `--find sitemap` uses only the sitemap, and `--find crawl` only follows links.
+- `--limit` sets the most pages to find (default 200). If the site has more, pagesnap says so. A capture with `--site` can have at most 200 pages.
+
 ### Split into parts
 
 The `--split` option saves one capture as several images, like A4 pages in a PDF. It works with PNG and JPEG.
@@ -89,6 +107,10 @@ The saved file paths are printed to stdout (progress goes to stderr), so it scri
 | `--list <file>` | | Capture every URL in this file, one on each line (`-` reads stdin); repeatable |
 | `--out-dir <dir>` | current folder | Where a list's files go (with `--ui`: where the UI saves captures) |
 | `-j, --parallel <n>` | 3 | Pages of a list that load at the same time (1 to 16) |
+| `--site <url>` | | Find the pages of this site and capture them all |
+| `--under <path>` | | `pages` and `--site`: only the pages under this path |
+| `--limit <n>` | 200 | `pages` and `--site`: the most pages to find |
+| `--find <mode>` | auto | `auto` (the sitemap, else follow links), `sitemap`, `crawl` |
 | `-f, --format` | png | `png`, `jpeg`, `pdf` |
 | `-q, --quality` | 85 | JPEG quality |
 | `--pdf-paged` | off | A4 pages instead of one long PDF page |
@@ -197,6 +219,7 @@ Or `pagesnap --ui` after `npm link`. This starts a small server on `http://local
   - To change the phone model or the viewport, use **Capture again**. Those change how the page itself is laid out.
 - **Split into parts** in the sidebar has the same modes as `--split`. The preview shows each part with its name and its own download button. **Download all** gets every part in one ZIP file.
 - **List** (next to **Capture**) captures many pages at once. Paste or type one URL on each line, or load a `.txt` or `.csv` file. Pasting several URLs into the URL field opens the list too. Lines that are not URLs are shown with their line numbers before anything starts.
+  - **Find pages** at the top of the list editor fills the list with the pages of a site, the same way as `pagesnap pages`. Type an address, like `example.com/blog`, and pick where to look: the sitemap, else the links; the sitemap only; or the links only. The pages found are added under the list, without the ones that are already in it. **Stop** ends the search.
   - Every page gets the sidebar's options. Three pages load at the same time; the others wait.
   - Each page has a card that shows its progress, then its thumbnail or its error. **Open** shows the capture, and **Back to the list** (or Esc) returns.
   - When the list ends, **Download all** gets every saved page in one ZIP file, **Try again** captures the pages that were not saved, and **Edit list** changes the list. **Cancel** stops the whole list.
