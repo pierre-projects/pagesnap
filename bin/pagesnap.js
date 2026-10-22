@@ -15,7 +15,7 @@ Usage: pagesnap <url> [options]
        pagesnap --site <url> [--under path] [--out-dir dir] [options]
        pagesnap pages <url> [--under path] [--limit 200] [--find auto|sitemap|crawl]
        pagesnap frame <image...> [--frame kind] [--frame-bg bg] [-d device | -w px -H px] [--url url] [--split screen] [-o file]
-       pagesnap --ui [--port 4777] [--out-dir ./captures] [--no-open]
+       pagesnap --ui [--port 4777] [--out-dir ./captures] [--no-open] [--app]
 
 Frame an existing capture
   pagesnap frame puts an image you already have (a pagesnap capture, or its parts in order) in a
@@ -94,6 +94,7 @@ Web UI
       --port <n>            UI port (default 4777)
       --out-dir <dir>       Where the UI saves captures (default ./captures)
       --no-open             Don't open the browser automatically
+      --app                 Open the UI in a window of its own (Edge on Windows)
   -h, --help                Show this help
 
 Examples
@@ -149,6 +150,7 @@ const { values: opt, positionals } = parseArgs({
     port: { type: 'string' },
     'out-dir': { type: 'string' },
     'no-open': { type: 'boolean' },
+    app: { type: 'boolean' },
     list: { type: 'string', multiple: true },
     parallel: { type: 'string', short: 'j' },
     site: { type: 'string' },
@@ -169,7 +171,7 @@ if (opt['list-devices']) {
 
 if (opt.ui) {
   const { startServer } = await import('../lib/server.js');
-  await startServer({ port: opt.port, outDir: opt['out-dir'], open: !opt['no-open'] }).catch((e) => die(e.message));
+  await startServer({ port: opt.port, outDir: opt['out-dir'], open: !opt['no-open'], app: opt.app }).catch((e) => die(e.message));
 } else if (positionals[0] === 'frame' && !opt.help) {
   // pagesnap frame <image...>: put an existing capture in a device frame, without loading the site.
   const images = positionals.slice(1);

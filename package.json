@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "snap": "node bin/pagesnap.js",
-    "ui": "node bin/pagesnap.js --ui"
+    "ui": "node bin/pagesnap.js --ui",
+    "shortcut": "node bin/make-shortcut.js"
   },
   "engines": {
     "node": ">=18.3"

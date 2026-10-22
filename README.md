@@ -240,9 +240,18 @@ Or `pagesnap --ui` after `npm link`. This starts a small server on `http://local
 
 | UI option | Default | |
 |---|---|---|
-| `--port <n>` | 4777 | Falls back to a free port if 4777 is taken |
+| `--port <n>` | 4777 | If a pagesnap UI for the same folder already runs there, opens that one instead; otherwise falls back to a free port if 4777 is taken |
 | `--out-dir <dir>` | `./captures` | Where captures are saved |
 | `--no-open` | | Don't open a browser tab |
+| `--app` | | Open the UI in a window of its own, with no tabs or address bar (Edge on Windows; a normal tab elsewhere) |
+
+### Pin it to the Windows taskbar
+
+```bash
+npm run shortcut
+```
+
+This adds **pagesnap** to the Start menu. Right-click it there and choose **Pin to taskbar**. Clicking it starts the UI with no console window, or finds the one already running, and opens it in its own window (`bin/pagesnap-ui.vbs` runs `pagesnap --ui --app`). Node must be on your `PATH`. While the window is open it shows as a second taskbar icon next to the pin; Windows can't join the two. The server keeps running after you close the window, so the next click opens at once. To stop it, end **Node.js JavaScript Runtime** in Task Manager.
 
 The server only listens on `127.0.0.1`. It rejects requests with a foreign `Host` or `Origin` header, so other websites you have open can't drive it, and it only serves capture files from the output folder. Stop it with Ctrl+C.
 
